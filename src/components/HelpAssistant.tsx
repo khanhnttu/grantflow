@@ -186,7 +186,7 @@ export function HelpAssistant({ onNav }: { onNav: (page: string) => void }) {
           className="fixed z-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden"
           style={{
             bottom: '5.5rem',
-            right: '1.25rem',
+            left: '1.25rem',
             width: 'min(380px, calc(100vw - 2.5rem))',
             height: 'min(520px, calc(100dvh - 8rem))',
             background: 'var(--ha-bg)',
@@ -317,14 +317,11 @@ export function HelpAssistant({ onNav }: { onNav: (page: string) => void }) {
         className="fixed z-50 flex items-center justify-center rounded-full shadow-xl transition-all hover:scale-105 active:scale-95"
         style={{
           bottom: '1.5rem',
-          right: '1.25rem',
+          left: '1.25rem',
           width: '3.25rem',
           height: '3.25rem',
           background: 'var(--accent)',
           color: '#fff',
-          // Stay above the 'Built with Arc Studio' badge (which is bottom-right too)
-          // The badge is ~28px tall; we push the bubble to 1.5rem = 24px from bottom
-          // and size it 3.25rem — badge is always below
         }}
         aria-label={open ? 'Close help assistant' : 'Open help assistant'}
       >

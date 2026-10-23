@@ -32,6 +32,6 @@
     }
   },
   "include": ["src", "scripts"],
-  "exclude": ["grantflow", "node_modules"]
+  "exclude": ["grantflow", "node_modules", "src/**/*.test.ts"]
 }
 
