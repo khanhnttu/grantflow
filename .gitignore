@@ -48,7 +48,7 @@ console.jsonl
 
 # Nested repo clone (leftover from import)
 grantflow/
-lib/
+/lib/
 
 # Circle recovery files — contain sensitive key material
 .circle/
