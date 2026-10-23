@@ -35,7 +35,7 @@ const DEFAULT_FEE_BPS = 100; // 1%
 type Step = 'form' | 'confirm' | 'deploying' | 'done' | 'error';
 
 interface DeployPageProps {
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export function DeployPage({ onBack }: DeployPageProps) {

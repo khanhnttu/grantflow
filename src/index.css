@@ -1,36 +1,104 @@
+/* ── Google Fonts (must come before @tailwind directives) ────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── Arc Design Tokens ───────────────────────────────────────────────── */
+/* ── Light Mode Tokens ───────────────────────────────────────────────────── */
 :root {
-  --bg: #f9f9fc;
-  --surface: rgba(255, 255, 255, 0.80);
-  --surface-strong: rgba(255, 255, 255, 0.95);
-  --surface-muted: #f3f4f8;
-  --ink: #122d45;
-  --ink-2: #334155;
-  --muted: #6b6580;
-  --subtle: #8a849c;
-  --border: rgba(18, 45, 69, 0.10);
-  --border-strong: rgba(25, 53, 77, 0.40);
-  --accent: #122d45;
-  --accent-hover: #1061a6;
-  --focus: #85b1ed;
-  --success: #1a8047;
-  --danger: #ba2b4c;
+  color-scheme: light;
+
+  --bg:              #f4f5f9;
+  --bg-alt:          #eef0f6;
+  --surface:         rgba(255,255,255,0.85);
+  --surface-strong:  rgba(255,255,255,0.97);
+  --surface-muted:   #f0f1f6;
+  --surface-hover:   rgba(255,255,255,0.6);
+
+  --ink:             #0d1b2a;
+  --ink-2:           #2c3e50;
+  --muted:           #64748b;
+  --subtle:          #94a3b8;
+  --border:          rgba(15,23,42,0.08);
+  --border-strong:   rgba(15,23,42,0.18);
+
+  --accent:          #1252a3;
+  --accent-2:        #1861c3;
+  --accent-hover:    #0f3f87;
+  --accent-fg:       #ffffff;
+  --focus:           #93c5fd;
+
+  --success:         #059669;
+  --success-bg:      #d1fae5;
+  --danger:          #dc2626;
+  --danger-bg:       #fee2e2;
+  --warning:         #d97706;
+  --warning-bg:      #fef3c7;
+
+  /* Sidebar */
+  --sidebar-bg:      #0d1b2a;
+  --sidebar-fg:      #c8d6e5;
+  --sidebar-active:  rgba(255,255,255,0.10);
+  --sidebar-hover:   rgba(255,255,255,0.06);
+  --sidebar-accent:  #4f9ef8;
+  --sidebar-border:  rgba(255,255,255,0.07);
+
+  /* Topbar */
+  --topbar-bg:       rgba(255,255,255,0.90);
+  --topbar-border:   rgba(15,23,42,0.08);
 }
 
-/* ── Base ────────────────────────────────────────────────────────────── */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+/* ── Dark Mode Tokens ────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:              #080e17;
+  --bg-alt:          #0d1520;
+  --surface:         rgba(255,255,255,0.04);
+  --surface-strong:  rgba(255,255,255,0.07);
+  --surface-muted:   rgba(255,255,255,0.03);
+  --surface-hover:   rgba(255,255,255,0.06);
+
+  --ink:             #e8f0fa;
+  --ink-2:           #b8cde0;
+  --muted:           #6b8299;
+  --subtle:          #435569;
+  --border:          rgba(255,255,255,0.07);
+  --border-strong:   rgba(255,255,255,0.15);
+
+  --accent:          #4f9ef8;
+  --accent-2:        #6db3ff;
+  --accent-hover:    #74bbff;
+  --accent-fg:       #080e17;
+  --focus:           #3b82f6;
+
+  --success:         #34d399;
+  --success-bg:      rgba(52,211,153,0.12);
+  --danger:          #f87171;
+  --danger-bg:       rgba(248,113,113,0.12);
+  --warning:         #fbbf24;
+  --warning-bg:      rgba(251,191,36,0.12);
+
+  /* Sidebar — darker in dark mode */
+  --sidebar-bg:      #060c14;
+  --sidebar-fg:      #7a9ab8;
+  --sidebar-active:  rgba(255,255,255,0.08);
+  --sidebar-hover:   rgba(255,255,255,0.04);
+  --sidebar-accent:  #4f9ef8;
+  --sidebar-border:  rgba(255,255,255,0.05);
+
+  --topbar-bg:       rgba(8,14,23,0.92);
+  --topbar-border:   rgba(255,255,255,0.06);
 }
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
 
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -38,13 +106,78 @@ body {
   min-height: 100dvh;
   font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   background-color: var(--bg);
-  /* Subtle warm gradient — inline since Tailwind can't reference CSS vars in bg-gradient */
-  background-image: linear-gradient(180deg, #f9f9fc 0%, #fffcf7 52%, #fbf7f2 100%);
-  background-attachment: fixed;
   color: var(--ink);
+  transition: background-color 0.2s, color 0.2s;
 }
 
-/* ── Typography helpers ──────────────────────────────────────────────── */
+/* ── App Shell Layout ────────────────────────────────────────────────────── */
+.app-shell {
+  display: flex;
+  min-height: 100dvh;
+}
+
+.app-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100dvh;
+  z-index: 40;
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+
+.app-sidebar.collapsed {
+  transform: translateX(-100%);
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin-left: 220px;
+  transition: margin-left 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+
+.app-main.full-width {
+  margin-left: 0;
+}
+
+.app-topbar {
+  height: 56px;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--topbar-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+}
+
+.app-content {
+  flex: 1;
+  padding: 24px;
+  max-width: 1280px;
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .app-sidebar { transform: translateX(-100%); }
+  .app-sidebar.mobile-open { transform: translateX(0); }
+  .app-main { margin-left: 0; }
+  .app-content { padding: 16px; }
+}
+
+/* ── Typography ──────────────────────────────────────────────────────────── */
 .display {
   font-family: 'Space Grotesk', ui-sans-serif, sans-serif;
   letter-spacing: -0.03em;
@@ -52,9 +185,98 @@ body {
 
 .mono {
   font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ── Sonner toasts ───────────────────────────────────────────────────── */
-[data-sonner-toaster] {
-  font-family: 'DM Sans', ui-sans-serif, sans-serif !important;
+/* ── Surface Card ────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
+
+.card-strong {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* ── Status Pills ────────────────────────────────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pill-open    { background: var(--success-bg); color: var(--success); }
+.pill-closed  { background: var(--surface-muted); color: var(--muted); }
+.pill-ending  { background: var(--warning-bg); color: var(--warning); }
+.pill-full    { background: var(--danger-bg); color: var(--danger); }
+
+/* ── Progress Bar ────────────────────────────────────────────────────────── */
+.progress-track {
+  height: 4px;
+  background: var(--border);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+/* ── Activity Ticker ─────────────────────────────────────────────────────── */
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.ticker-item:hover { background: var(--surface-muted); }
+.ticker-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+.gf-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.gf-table th {
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.gf-table td {
+  padding: 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.gf-table tr:last-child td { border-bottom: none; }
+.gf-table tbody tr { transition: background 0.12s; cursor: pointer; }
+.gf-table tbody tr:hover { background: var(--surface-muted); }
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+/* ── Sonner toasts ───────────────────────────────────────────────────────── */
+[data-sonner-toaster] { font-family: 'DM Sans', ui-sans-serif, sans-serif !important; }

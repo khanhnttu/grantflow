@@ -82,11 +82,14 @@ function FAQItem({ q, a }: { q: string; a: string }) {
 // ── LandingPage ──────────────────────────────────────────────────────────────
 
 interface LandingPageProps {
-  onLaunch: () => void;
-  onBrowse: () => void;
+  onNav: (page: string) => void;
+
+
 }
 
-export function LandingPage({ onLaunch, onBrowse }: LandingPageProps) {
+export function LandingPage({ onNav }: LandingPageProps) {
+  const onLaunch = () => onNav('sponsor');
+  const onBrowse = () => onNav('explore');
   return (
     <div className="space-y-0 pb-16">
 

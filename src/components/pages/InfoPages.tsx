@@ -28,7 +28,7 @@ function PageShell({ title, subtitle, children }: { title: string; subtitle?: st
 
 // ── AboutPage ─────────────────────────────────────────────────────────────
 
-export function AboutPage() {
+export function AboutPage({ onNav: _onNav }: { onNav?: (p: string) => void }) {
   return (
     <PageShell
       title="About GrantFlow"
@@ -93,7 +93,7 @@ export function AboutPage() {
 
 // ── DocsPage ──────────────────────────────────────────────────────────────
 
-export function DocsPage() {
+export function DocsPage({ onNav: _onNav }: { onNav?: (p: string) => void }) {
   return (
     <PageShell
       title="Docs"
@@ -148,7 +148,7 @@ export function DocsPage() {
 
 // ── TermsPage ─────────────────────────────────────────────────────────────
 
-export function TermsPage() {
+export function TermsPage({ onNav: _onNav }: { onNav?: (p: string) => void }) {
   return (
     <PageShell
       title="Terms &amp; Risk Disclaimer"

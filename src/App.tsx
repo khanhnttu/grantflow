@@ -1,79 +1,112 @@
 import { useState, useEffect } from 'react';
-import { Layout, type Page } from '@/components/Layout';
+import { AppShell } from '@/components/AppShell';
+import type { AppPage, ThemeMode } from '@/components/AppShell';
 import { LandingPage } from '@/components/pages/LandingPage';
+import { ExplorePage } from '@/components/pages/ExplorePage';
 import { SponsorPage } from '@/components/pages/SponsorPage';
 import { BuilderPage } from '@/components/pages/BuilderPage';
 import { ReviewerPage } from '@/components/pages/ReviewerPage';
-import { ProgramsPage, PublicProgramPage } from '@/components/pages/ProgramsPage';
-import { DeployPage } from '@/components/pages/DeployPage';
+import { ProgramDetailPage } from '@/components/pages/ProgramDetailPage';
 import { AboutPage, DocsPage, TermsPage } from '@/components/pages/InfoPages';
+import { DeployPage } from '@/components/pages/DeployPage';
 
-// Hidden admin route /deploy — not in main nav
-function useDeployRoute() {
-  const [isDeployRoute, setIsDeployRoute] = useState(() => window.location.hash === '#deploy');
-  useEffect(() => {
-    const handler = () => setIsDeployRoute(window.location.hash === '#deploy');
-    window.addEventListener('hashchange', handler);
-    return () => window.removeEventListener('hashchange', handler);
-  }, []);
-  return isDeployRoute;
+// Pages that bypass the sidebar shell
+const BARE_PAGES: AppPage[] = ['landing', 'about', 'docs', 'terms'];
+
+function parseHash(): { page: AppPage; programId?: number } {
+  const hash = window.location.hash.replace('#', '').replace(/^\//, '');
+  if (!hash || hash === '/') return { page: 'landing' };
+  if (hash.startsWith('program/')) {
+    const id = parseInt(hash.split('/')[1], 10);
+    return { page: 'program', programId: isNaN(id) ? 0 : id };
+  }
+  const valid: AppPage[] = ['explore','sponsor','builder','reviewer','about','docs','terms','deploy','landing'];
+  return valid.includes(hash as AppPage)
+    ? { page: hash as AppPage }
+    : { page: 'landing' };
 }
 
 export default function App() {
-  const [page, setPage] = useState<Page>('home');
-  const [programDetailId, setProgramDetailId] = useState<bigint | null>(null);
-  const isDeployRoute = useDeployRoute();
+  const [{ page, programId }, setRoute] = useState<{ page: AppPage; programId?: number }>(parseHash);
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    const saved = localStorage.getItem('gf-theme');
+    return (saved === 'dark' || saved === 'light') ? saved : 'light';
+  });
+  const [search, setSearch] = useState('');
 
-  const handleNav = (p: Page) => {
-    setProgramDetailId(null);
-    setPage(p);
-    if (window.location.hash === '#deploy') {
-      window.history.pushState(null, '', window.location.pathname);
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('gf-theme', theme);
+  }, [theme]);
+
+  // Hash-based routing
+  useEffect(() => {
+    const handler = () => setRoute(parseHash());
+    window.addEventListener('hashchange', handler);
+    return () => window.removeEventListener('hashchange', handler);
+  }, []);
+
+  const navigate = (p: AppPage, id?: number) => {
+    if (p === 'program' && id !== undefined) {
+      window.location.hash = `program/${id}`;
+    } else {
+      window.location.hash = p === 'landing' ? '/' : p;
+    }
+    setRoute({ page: p, programId: id });
+  };
+
+  const isBare = BARE_PAGES.includes(page);
+
+  const renderPage = () => {
+    switch (page) {
+      case 'landing':
+        return <LandingPage onNav={p => navigate(p as AppPage)} />;
+      case 'explore':
+        return (
+          <ExplorePage
+            search={search}
+            onOpenProgram={id => navigate('program', id)}
+          />
+        );
+      case 'sponsor':
+        return <SponsorPage />;
+      case 'builder':
+        return <BuilderPage />;
+      case 'reviewer':
+        return <ReviewerPage />;
+      case 'program':
+        return (
+          <ProgramDetailPage
+            programId={programId ?? 0}
+            onBack={() => navigate('explore')}
+            onNav={p => navigate(p as AppPage)}
+          />
+        );
+      case 'about':
+        return <AboutPage onNav={p => navigate(p as AppPage)} />;
+      case 'docs':
+        return <DocsPage onNav={p => navigate(p as AppPage)} />;
+      case 'terms':
+        return <TermsPage onNav={p => navigate(p as AppPage)} />;
+      case 'deploy':
+        return <DeployPage />;
+      default:
+        return <LandingPage onNav={p => navigate(p as AppPage)} />;
     }
   };
 
-  const handleBackFromDeploy = () => {
-    window.location.hash = '';
-  };
-
-  const handleOpenDeploy = () => {
-    window.location.hash = 'deploy';
-  };
-
-  // Hidden admin deploy page
-  if (isDeployRoute) {
-    return (
-      <div className="min-h-dvh" style={{ color: 'var(--ink)' }}>
-        <main className="mx-auto max-w-5xl px-4 py-8">
-          <DeployPage onBack={handleBackFromDeploy} />
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <Layout page={page} onNav={handleNav} onDeploy={handleOpenDeploy}>
-      {page === 'home' && (
-        <LandingPage
-          onLaunch={() => handleNav('sponsor')}
-          onBrowse={() => handleNav('programs')}
-        />
-      )}
-      {page === 'programs' && !programDetailId && (
-        <ProgramsPage onSelectProgram={(id) => setProgramDetailId(id)} />
-      )}
-      {page === 'programs' && programDetailId !== null && (
-        <PublicProgramPage
-          programId={programDetailId}
-          onBack={() => setProgramDetailId(null)}
-        />
-      )}
-      {page === 'sponsor'  && <SponsorPage />}
-      {page === 'builder'  && <BuilderPage />}
-      {page === 'reviewer' && <ReviewerPage />}
-      {page === 'about'    && <AboutPage />}
-      {page === 'docs'     && <DocsPage />}
-      {page === 'terms'    && <TermsPage />}
-    </Layout>
+    <AppShell
+      page={page}
+      onNav={navigate}
+      theme={theme}
+      onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+      search={search}
+      onSearch={setSearch}
+      bare={isBare}
+    >
+      {renderPage()}
+    </AppShell>
   );
 }
