@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/AppShell';
 import type { AppPage, ThemeMode } from '@/components/AppShell';
+import { HelpAssistant } from '@/components/HelpAssistant';
 import { LandingPage } from '@/components/pages/LandingPage';
 import { ExplorePage } from '@/components/pages/ExplorePage';
 import { SponsorPage } from '@/components/pages/SponsorPage';
@@ -97,16 +98,22 @@ export default function App() {
   };
 
   return (
-    <AppShell
-      page={page}
-      onNav={navigate}
-      theme={theme}
-      onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
-      search={search}
-      onSearch={setSearch}
-      bare={isBare}
-    >
-      {renderPage()}
-    </AppShell>
+    <>
+      <AppShell
+        page={page}
+        onNav={navigate}
+        theme={theme}
+        onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+        search={search}
+        onSearch={setSearch}
+        bare={isBare}
+      >
+        {renderPage()}
+      </AppShell>
+      {/* Help assistant — not shown on deploy page */}
+      {page !== 'deploy' && (
+        <HelpAssistant onNav={p => navigate(p as AppPage)} />
+      )}
+    </>
   );
 }

@@ -47,6 +47,16 @@
   /* Topbar */
   --topbar-bg:       rgba(255,255,255,0.90);
   --topbar-border:   rgba(15,23,42,0.08);
+
+  /* Help Assistant */
+  --ha-bg:           #ffffff;
+  --ha-header:       #f8fafc;
+  --ha-border:       rgba(18,45,69,0.10);
+  --ha-bot:          #f1f5f9;
+  --ha-chip:         #eef2ff;
+  --ha-input:        #ffffff;
+  --ha-ink:          #122d45;
+  --ha-muted:        #6b6580;
 }
 
 /* ── Dark Mode Tokens ────────────────────────────────────────────────────── */
@@ -90,6 +100,16 @@
 
   --topbar-bg:       rgba(8,14,23,0.92);
   --topbar-border:   rgba(255,255,255,0.06);
+
+  /* Help Assistant — dark */
+  --ha-bg:           #0f1824;
+  --ha-header:       #0a1120;
+  --ha-border:       rgba(255,255,255,0.08);
+  --ha-bot:          #1a2535;
+  --ha-chip:         rgba(79,158,248,0.12);
+  --ha-input:        #1a2535;
+  --ha-ink:          #c8d6e5;
+  --ha-muted:        #5a7a9a;
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
