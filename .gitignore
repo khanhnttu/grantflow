@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment — NEVER commit secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+out/
+
+# Foundry build cache and artifacts
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Vite / TypeScript
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Bun
+.bun/
+
+# Coverage
+coverage/
+lcov.info
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime trace/console capture files (Arc Studio sandbox only)
+traces.jsonl
+console.jsonl
+
+# Nested repo clone (leftover from import)
+grantflow/
+lib/
+
+# Circle recovery files — contain sensitive key material
+.circle/

@@ -1,0 +1,1072 @@
+{
+  "contractAddress": "0x3805f86f71b47480a2b31d563ce1620b490a841f",
+  "network": "ARC-TESTNET",
+  "deployerWalletId": "3c2464b2-8369-52e2-a782-800bbeca5396",
+  "contract_code_path": "/home/user/app/contracts/GrantFlow.sol",
+  "contract_compiled_code_path": "/home/user/app/contracts/out/GrantFlow.sol/GrantFlow.json",
+  "contract_network_and_links": {
+    "Arc Testnet": "https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f"
+  },
+  "contract_deployments": [
+    {
+      "chain": "Arc Testnet",
+      "address": "0x3805f86f71b47480a2b31d563ce1620b490a841f",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f",
+      "txHash": "0xae1d94c2da2bc1685c918a39d1bef7678e086ffbfccbe70c8497c9a43cda2bdf",
+      "deployedAt": "2026-10-23T13:08:46.261Z"
+    },
+    {
+      "chain": "Arc Testnet",
+      "address": "0x541e15b5a1fe75534ff355d677a5ab7428bc1e93",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0x541e15b5a1fe75534ff355d677a5ab7428bc1e93",
+      "txHash": "0xb62ec4715e30132105c4a812a4554c3642720cd1b587e52fe4c3a3dba2235c2b",
+      "deployedAt": "2026-10-23T12:54:59.446Z"
+    },
+    {
+      "chain": "Arc Testnet",
+      "address": "0xa6fbdb92f5869072972a8e5d27a8dadc378914e6",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0xa6fbdb92f5869072972a8e5d27a8dadc378914e6",
+      "txHash": "0x09dab2efebe8d9fd84768f34847b7ff713ba92cd134d71ffe9049dc151e2e7e1",
+      "deployedAt": "2026-10-23T12:35:08.262Z"
+    }
+  ],
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "usdc_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "feeRecipient_",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "feeBps_",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "MAX_FEE_BPS",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "acceptOwnership",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "approve",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "submissionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "claim",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "createProgram",
+      "inputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "prizeAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "slots",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "reviewers",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
+        {
+          "name": "threshold",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "programType_",
+          "type": "uint8",
+          "internalType": "enum GrantFlow.ProgramType"
+        },
+        {
+          "name": "category_",
+          "type": "uint8",
+          "internalType": "enum GrantFlow.Category"
+        },
+        {
+          "name": "description_",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "feeBps",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "feeRecipient",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getProgram",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "prizeAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "slots",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sponsor",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "reviewers",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
+        {
+          "name": "threshold",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "slotsUsed",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "totalDeposited",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "exists",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getProgramMeta",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "programType",
+          "type": "uint8",
+          "internalType": "enum GrantFlow.ProgramType"
+        },
+        {
+          "name": "category",
+          "type": "uint8",
+          "internalType": "enum GrantFlow.Category"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getReviewers",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address[]",
+          "internalType": "address[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getSubmission",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "submissionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "submitter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "projectContract",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "metadataURI",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "approvals",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "paid",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "hasSubmittedContract",
+      "inputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "hasSubmittedWallet",
+      "inputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isReviewer",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "owner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pendingClaims",
+      "inputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pendingOwner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "programCount",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "programs",
+      "inputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "name",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "prizeAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "slots",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "sponsor",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "threshold",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "slotsUsed",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "totalDeposited",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "exists",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "programType",
+          "type": "uint8",
+          "internalType": "enum GrantFlow.ProgramType"
+        },
+        {
+          "name": "category",
+          "type": "uint8",
+          "internalType": "enum GrantFlow.Category"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "reclaim",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "renounceOwnership",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setFeeBps",
+      "inputs": [
+        {
+          "name": "newBps",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setFeeRecipient",
+      "inputs": [
+        {
+          "name": "newRecipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "submissionCount",
+      "inputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "submit",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "projectContract",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "metadataURI",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "totalFeesCollected",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "transferOwnership",
+      "inputs": [
+        {
+          "name": "newOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "usdc",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IERC20"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "Approved",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "submissionId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "reviewer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "totalApprovals",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Claimed",
+      "inputs": [
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "FeeBpsUpdated",
+      "inputs": [
+        {
+          "name": "oldBps",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "newBps",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "FeeCollected",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "FeeRecipientUpdated",
+      "inputs": [
+        {
+          "name": "oldRecipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newRecipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferStarted",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferred",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PrizePaid",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "submissionId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ProgramCreated",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "sponsor",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        },
+        {
+          "name": "prizeAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "slots",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "deadline",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Reclaimed",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "sponsor",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Submitted",
+      "inputs": [
+        {
+          "name": "programId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "submissionId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "submitter",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "projectContract",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "metadataURI",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AlreadyPaid",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "AlreadySubmitted",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "AlreadySubmittedWallet",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "AlreadyVoted",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "DeadlineNotPassed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "DeadlinePassed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "FeeTooHigh",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidParams",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidProjectContract",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotReviewer",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotSponsor",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OwnableInvalidOwner",
+      "inputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "OwnableUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "account",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ProgramNotFound",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "SlotsFull",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SubmissionNotFound",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "WrongProgramType",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ZeroAddress",
+      "inputs": []
+    }
+  ]
+}
