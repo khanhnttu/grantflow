@@ -10,6 +10,7 @@ Built with [Arc Studio](https://studio.arc.io)
 
 | | |
 |---|---|
+| **App** | [preeminent-lily-d87c8b.netlify.app](https://preeminent-lily-d87c8b.netlify.app) |
 | **Contract** | `0x7c2866a62e6ad73e15e243d4341219eb3995fe7d` |
 | **Explorer** | [explorer.arc.io/address/0x7c2866...](https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d) |
 | **Deploy tx** | `0x15fa390fb616c79d891f8194618b5d9e56928402f920aa5bf21363d7ba596cc9` |

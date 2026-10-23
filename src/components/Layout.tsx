@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ConnectKitButton } from 'connectkit';
-import { Award, BookOpen, Eye, Globe2, Menu, Rocket, X } from 'lucide-react';
+import { Award, BookOpen, Eye, Github, Globe2, Menu, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { TokenUSDC } from '@web3icons/react';
 import { cn } from '@/lib/utils';
@@ -19,19 +19,14 @@ interface LayoutProps {
   children: ReactNode;
   page: Page;
   onNav: (p: Page) => void;
-  onDeploy: () => void;
+  onDeploy?: () => void;
 }
 
-export function Layout({ children, page, onNav, onDeploy }: LayoutProps) {
+export function Layout({ children, page, onNav }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleNav = (p: Page) => {
     onNav(p);
-    setMobileOpen(false);
-  };
-
-  const handleDeploy = () => {
-    onDeploy();
     setMobileOpen(false);
   };
 
@@ -85,17 +80,6 @@ export function Layout({ children, page, onNav, onDeploy }: LayoutProps) {
                 {label}
               </button>
             ))}
-            {/* Admin: Deploy to Mainnet — subtle, separated from main nav */}
-            <span className="mx-1 h-4 w-px" style={{ background: 'var(--border)' }} />
-            <button
-              onClick={handleDeploy}
-              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all whitespace-nowrap hover:bg-black/5"
-              style={{ color: 'var(--ink-3, #94a3b8)' }}
-              title="Admin: Deploy GrantFlow to Arc Mainnet"
-            >
-              <Rocket className="size-3.5 flex-shrink-0" />
-              Deploy
-            </button>
           </nav>
 
           {/* Spacer on desktop when nav is present */}
@@ -168,22 +152,69 @@ export function Layout({ children, page, onNav, onDeploy }: LayoutProps) {
                 {label}
               </button>
             ))}
-            {/* Admin separator + Deploy button */}
-            <div className="my-1 border-t" style={{ borderColor: 'var(--border)' }} />
-            <button
-              onClick={handleDeploy}
-              className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium w-full text-left transition-all hover:bg-black/5"
-              style={{ color: 'var(--ink-3, #94a3b8)' }}
-            >
-              <Rocket className="size-3.5 flex-shrink-0" />
-              Deploy to Mainnet
-            </button>
+
           </div>
         )}
       </header>
 
       {/* ── Main content ───────────────────────────────────────────────── */}
       <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">{children}</main>
+
+      {/* ── Footer ─────────────────────────────────────────────────────── */}
+      <footer
+        className="mt-8 border-t"
+        style={{ borderColor: 'var(--border)', background: 'var(--surface-muted, #f8fafc)' }}
+      >
+        <div className="mx-auto max-w-5xl px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs"
+          style={{ color: 'var(--ink-3, #94a3b8)' }}
+        >
+          {/* Left: branding */}
+          <div className="flex items-center gap-1.5">
+            <div
+              className="flex size-5 items-center justify-center rounded-md"
+              style={{ background: 'var(--accent)' }}
+            >
+              <Award className="size-3 text-white" />
+            </div>
+            <span className="font-semibold" style={{ color: 'var(--ink-2)' }}>GrantFlow</span>
+            <span>·</span>
+            <span>Built with</span>
+            <a
+              href="https://studio.arc.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium hover:underline"
+              style={{ color: 'var(--accent)' }}
+            >
+              Arc Studio
+            </a>
+          </div>
+
+          {/* Center: contract address */}
+          <a
+            href="https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono hover:underline flex items-center gap-1"
+            style={{ color: 'var(--ink-3, #94a3b8)' }}
+            title="View contract on Arc Mainnet explorer"
+          >
+            0x7c28…fe7d
+          </a>
+
+          {/* Right: GitHub */}
+          <a
+            href="https://github.com/khanhnttu/grantflow"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 hover:underline"
+            style={{ color: 'var(--ink-3, #94a3b8)' }}
+          >
+            <Github className="size-3.5" />
+            khanhnttu/grantflow
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }
