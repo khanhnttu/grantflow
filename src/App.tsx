@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Layout, type Page } from '@/components/Layout';
+import { LandingPage } from '@/components/pages/LandingPage';
 import { SponsorPage } from '@/components/pages/SponsorPage';
 import { BuilderPage } from '@/components/pages/BuilderPage';
 import { ReviewerPage } from '@/components/pages/ReviewerPage';
 import { ProgramsPage, PublicProgramPage } from '@/components/pages/ProgramsPage';
 import { DeployPage } from '@/components/pages/DeployPage';
+import { AboutPage, DocsPage, TermsPage } from '@/components/pages/InfoPages';
 
-
-// Route /deploy is a hidden admin page — accessed by navigating to /#deploy or
-// clicking the subtle admin link. It is never shown in the main nav.
+// Hidden admin route /deploy — not in main nav
 function useDeployRoute() {
   const [isDeployRoute, setIsDeployRoute] = useState(() => window.location.hash === '#deploy');
   useEffect(() => {
@@ -20,14 +20,13 @@ function useDeployRoute() {
 }
 
 export default function App() {
-  const [page, setPage] = useState<Page>('programs');
+  const [page, setPage] = useState<Page>('home');
   const [programDetailId, setProgramDetailId] = useState<bigint | null>(null);
   const isDeployRoute = useDeployRoute();
 
   const handleNav = (p: Page) => {
     setProgramDetailId(null);
     setPage(p);
-    // Leave deploy route if user clicks a main nav item
     if (window.location.hash === '#deploy') {
       window.history.pushState(null, '', window.location.pathname);
     }
@@ -41,7 +40,7 @@ export default function App() {
     window.location.hash = 'deploy';
   };
 
-  // If user is on the deploy route, render the deploy page without the main layout nav
+  // Hidden admin deploy page
   if (isDeployRoute) {
     return (
       <div className="min-h-dvh" style={{ color: 'var(--ink)' }}>
@@ -54,6 +53,12 @@ export default function App() {
 
   return (
     <Layout page={page} onNav={handleNav} onDeploy={handleOpenDeploy}>
+      {page === 'home' && (
+        <LandingPage
+          onLaunch={() => handleNav('sponsor')}
+          onBrowse={() => handleNav('programs')}
+        />
+      )}
       {page === 'programs' && !programDetailId && (
         <ProgramsPage onSelectProgram={(id) => setProgramDetailId(id)} />
       )}
@@ -63,9 +68,12 @@ export default function App() {
           onBack={() => setProgramDetailId(null)}
         />
       )}
-      {page === 'sponsor' && <SponsorPage />}
-      {page === 'builder' && <BuilderPage />}
+      {page === 'sponsor'  && <SponsorPage />}
+      {page === 'builder'  && <BuilderPage />}
       {page === 'reviewer' && <ReviewerPage />}
+      {page === 'about'    && <AboutPage />}
+      {page === 'docs'     && <DocsPage />}
+      {page === 'terms'    && <TermsPage />}
     </Layout>
   );
 }
