@@ -1,18 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ConnectKitButton } from 'connectkit';
 import {
-  LayoutGrid, List, Compass, PlusCircle, FileText,
-  BookOpen, Users, Sun, Moon, Menu, ChevronRight,
-  Github, ExternalLink
+  Compass, PlusCircle, FileText,
+  BookOpen, Sun, Moon, Menu, ChevronRight,
+  Github, ExternalLink, Code2, Scale, List
 } from 'lucide-react';
 import { GRANTFLOW_ADDRESS } from '@/lib/grantflow';
 import { ACTIVE_CHAIN_ID } from '@/lib/chainConfig';
+import { RoleSwitcher, useRole } from '@/components/RoleSwitcher';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type AppPage =
   | 'landing' | 'explore' | 'sponsor' | 'builder' | 'reviewer'
-  | 'program' | 'about' | 'docs' | 'terms' | 'deploy';
+  | 'program' | 'about' | 'docs' | 'terms' | 'deploy'
+  | 'v4-explore' | 'v4-program' | 'v4-create' | 'v4-submissions';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -35,13 +37,23 @@ const EXPLORER = ACTIVE_CHAIN_ID === 5042
   ? 'https://explorer.arc.io'
   : 'https://explorer.testnet.arc.io';
 
-// ── Sidebar nav items ─────────────────────────────────────────────────────────
-const NAV = [
-  { id: 'explore' as AppPage,   label: 'Explore',       icon: Compass },
-  { id: 'sponsor' as AppPage,   label: 'My programs',   icon: LayoutGrid },
-  { id: 'builder' as AppPage,   label: 'My submissions',icon: List },
-  { id: 'reviewer' as AppPage,  label: 'Review queue',  icon: Users },
-  { id: 'docs' as AppPage,      label: 'Guide',         icon: BookOpen },
+// ── Role-aware nav ────────────────────────────────────────────────────────────
+const NAV_HACKER = [
+  { id: 'v4-explore' as AppPage,     label: 'Explore V4',    icon: Compass   },
+  { id: 'v4-submissions' as AppPage, label: 'My submissions',icon: Code2     },
+  { id: 'explore' as AppPage,        label: 'Legacy explore', icon: List     },
+  { id: 'docs' as AppPage,           label: 'Guide',          icon: BookOpen },
+];
+const NAV_ORGANIZER = [
+  { id: 'v4-explore' as AppPage,  label: 'All programs', icon: Compass    },
+  { id: 'v4-create' as AppPage,   label: 'Create program', icon: PlusCircle },
+  { id: 'explore' as AppPage,     label: 'Legacy explore', icon: List      },
+  { id: 'docs' as AppPage,        label: 'Guide',           icon: BookOpen },
+];
+const NAV_JUDGE = [
+  { id: 'v4-explore' as AppPage, label: 'Programs to judge', icon: Scale    },
+  { id: 'explore' as AppPage,    label: 'Legacy explore',    icon: List     },
+  { id: 'docs' as AppPage,       label: 'Guide',             icon: BookOpen },
 ];
 
 // ── Logo mark SVG ─────────────────────────────────────────────────────────────
@@ -66,6 +78,9 @@ function Sidebar({
   mobileOpen: boolean;
   onMobileClose: () => void;
 }) {
+  const { role } = useRole();
+  const NAV = role === 'organizer' ? NAV_ORGANIZER : role === 'judge' ? NAV_JUDGE : NAV_HACKER;
+
   return (
     <>
       {/* Mobile overlay */}
@@ -95,20 +110,22 @@ function Sidebar({
           </span>
         </div>
 
-        {/* Create button */}
-        <div className="px-3 mb-3">
-          <button
-            onClick={() => { onNav('sponsor'); onMobileClose(); }}
-            className="w-full flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all"
-            style={{
-              background: '#4f9ef8',
-              color: '#080e17',
-            }}
-          >
-            <PlusCircle size={15} />
-            Create program
-          </button>
-        </div>
+        {/* Create button (organizer-only) */}
+        {role === 'organizer' && (
+          <div className="px-3 mb-3">
+            <button
+              onClick={() => { onNav('v4-create'); onMobileClose(); }}
+              className="w-full flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all"
+              style={{
+                background: '#4f9ef8',
+                color: '#080e17',
+              }}
+            >
+              <PlusCircle size={15} />
+              Create program
+            </button>
+          </div>
+        )}
 
         {/* Nav items */}
         <nav className="flex-1 px-2 space-y-0.5">
@@ -225,6 +242,8 @@ function TopBar({
       </div>
 
       <div className="flex items-center gap-2 ml-auto">
+        {/* Role switcher */}
+        <RoleSwitcher />
         {/* Network badge */}
         <div
           className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"

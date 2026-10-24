@@ -21,6 +21,8 @@ import { encodeDeployData, isAddress } from 'viem';
 import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Copy, ExternalLink, Loader2, Shield, Zap } from 'lucide-react';
 import { GRANTFLOW_DEPLOY_ABI } from '@/lib/grantflowDeploy';
 import { GRANTFLOW_BYTECODE } from '@/lib/grantflowBytecode';
+import { GRANTFLOW_V4_BYTECODE } from '@/lib/grantflowV4Bytecode';
+import { GRANTFLOW_V4_ABI } from '@/lib/grantflowV4';
 import { arcMainnet } from '@/config';
 import { requireChain } from '@/onchain-facts';
 import { cn } from '@/lib/utils';
@@ -33,6 +35,7 @@ const ARC_MAINNET_EXPLORER = ARC_MAINNET.explorerBase;
 const DEFAULT_FEE_BPS = 100; // 1%
 
 type Step = 'form' | 'confirm' | 'deploying' | 'done' | 'error';
+type ContractVersion = 'v3' | 'v4';
 
 interface DeployPageProps {
   onBack?: () => void;
@@ -42,6 +45,7 @@ export function DeployPage({ onBack }: DeployPageProps) {
   const { address: connectedAddress, chainId } = useAccount();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
 
+  const [version, setVersion] = useState<ContractVersion>('v4');
   const [step, setStep] = useState<Step>('form');
   const [feeRecipientOverride, setFeeRecipientOverride] = useState<string>('');
   const [feeBpsInput, setFeeBpsInput] = useState<string>(String(DEFAULT_FEE_BPS));
@@ -73,21 +77,19 @@ export function DeployPage({ onBack }: DeployPageProps) {
   // Promote step to 'done' once receipt arrives — derive via render, not effect
   const effectiveStep: Step = isDone ? 'done' : step;
 
+  const activeAbi = version === 'v4' ? GRANTFLOW_V4_ABI : GRANTFLOW_DEPLOY_ABI;
+  const activeBytecode = version === 'v4' ? GRANTFLOW_V4_BYTECODE : GRANTFLOW_BYTECODE;
+
   const handleDeploy = () => {
     if (!formValid) return;
     setErrorMsg('');
 
-    // Pre-flight: encode deploy data before opening the wallet so any ABI/arg
-    // mismatch surfaces immediately as a UI error, not a wallet rejection.
+    // Pre-flight: encode deploy data before opening the wallet
     try {
       encodeDeployData({
-        abi: GRANTFLOW_DEPLOY_ABI,
-        bytecode: GRANTFLOW_BYTECODE,
-        args: [
-          ARC_MAINNET_USDC,
-          feeRecipient,
-          BigInt(feeBps),
-        ],
+        abi: activeAbi,
+        bytecode: activeBytecode,
+        args: [ARC_MAINNET_USDC, feeRecipient, BigInt(feeBps)],
       });
     } catch (err) {
       setErrorMsg(
@@ -98,17 +100,12 @@ export function DeployPage({ onBack }: DeployPageProps) {
       return;
     }
 
-    // Encoding passed — open the wallet
     setStep('deploying');
     deployContract(
       {
-        abi: GRANTFLOW_DEPLOY_ABI,
-        bytecode: GRANTFLOW_BYTECODE,
-        args: [
-          ARC_MAINNET_USDC,
-          feeRecipient,
-          BigInt(feeBps),
-        ],
+        abi: activeAbi,
+        bytecode: activeBytecode,
+        args: [ARC_MAINNET_USDC, feeRecipient, BigInt(feeBps)],
       },
       {
         onError: (err) => {
@@ -146,10 +143,23 @@ export function DeployPage({ onBack }: DeployPageProps) {
             Deploy GrantFlow — Arc Mainnet
           </h1>
         </div>
-        <p className="text-sm" style={{ color: 'var(--ink-2)' }}>
+        <p className="text-sm mb-3" style={{ color: 'var(--ink-2)' }}>
           Admin tool. Hidden from the main nav. Deploys the compiled GrantFlow contract
           from your browser wallet to Arc Mainnet.
         </p>
+        {/* Version switcher */}
+        <div className="flex gap-2">
+          {(['v4', 'v3'] as ContractVersion[]).map(v => (
+            <button key={v} onClick={() => { setVersion(v); setStep('form'); setConfirmed(false); }}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+              style={version === v
+                ? { background: 'var(--accent)', color: '#fff' }
+                : { background: 'var(--surface-muted)', border: '1px solid var(--border)', color: 'var(--ink-2)' }
+              }>
+              {v === 'v4' ? 'GrantFlowV4 (ranked prizes)' : 'GrantFlow v3 (legacy)'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Mainnet warning banner (always visible) ───────────────────────── */}

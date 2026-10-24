@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/AppShell';
 import type { AppPage, ThemeMode } from '@/components/AppShell';
 import { HelpAssistant } from '@/components/HelpAssistant';
+import { RoleProvider } from '@/components/RoleSwitcher';
 import { LandingPage } from '@/components/pages/LandingPage';
 import { ExplorePage } from '@/components/pages/ExplorePage';
 import { SponsorPage } from '@/components/pages/SponsorPage';
@@ -10,6 +11,10 @@ import { ReviewerPage } from '@/components/pages/ReviewerPage';
 import { ProgramDetailPage } from '@/components/pages/ProgramDetailPage';
 import { AboutPage, DocsPage, TermsPage } from '@/components/pages/InfoPages';
 import { DeployPage } from '@/components/pages/DeployPage';
+import { ExploreV4 } from '@/components/pages/v4/ExploreV4';
+import { ProgramDetailV4 } from '@/components/pages/v4/ProgramDetailV4';
+import { CreateProgramV4 } from '@/components/pages/v4/CreateProgramV4';
+import { MySubmissionsV4 } from '@/components/pages/v4/MySubmissionsV4';
 
 // Pages that bypass the sidebar shell
 const BARE_PAGES: AppPage[] = ['landing', 'about', 'docs', 'terms'];
@@ -21,10 +26,17 @@ function parseHash(): { page: AppPage; programId?: number } {
     const id = parseInt(hash.split('/')[1], 10);
     return { page: 'program', programId: isNaN(id) ? 0 : id };
   }
-  const valid: AppPage[] = ['explore','sponsor','builder','reviewer','about','docs','terms','deploy','landing'];
+  if (hash.startsWith('v4-program/')) {
+    const id = parseInt(hash.split('/')[1], 10);
+    return { page: 'v4-program', programId: isNaN(id) ? 0 : id };
+  }
+  const valid: AppPage[] = [
+    'explore','sponsor','builder','reviewer','about','docs','terms','deploy','landing',
+    'v4-explore','v4-create','v4-submissions',
+  ];
   return valid.includes(hash as AppPage)
     ? { page: hash as AppPage }
-    : { page: 'landing' };
+    : { page: 'v4-explore' };
 }
 
 export default function App() {
@@ -51,6 +63,8 @@ export default function App() {
   const navigate = (p: AppPage, id?: number) => {
     if (p === 'program' && id !== undefined) {
       window.location.hash = `program/${id}`;
+    } else if (p === 'v4-program' && id !== undefined) {
+      window.location.hash = `v4-program/${id}`;
     } else {
       window.location.hash = p === 'landing' ? '/' : p;
     }
@@ -63,6 +77,16 @@ export default function App() {
     switch (page) {
       case 'landing':
         return <LandingPage onNav={p => navigate(p as AppPage)} />;
+      // ── V4 pages ──
+      case 'v4-explore':
+        return <ExploreV4 search={search} onSelect={id => navigate('v4-program', id)} />;
+      case 'v4-program':
+        return <ProgramDetailV4 programId={programId ?? 0} onBack={() => navigate('v4-explore')} />;
+      case 'v4-create':
+        return <CreateProgramV4 onDone={() => navigate('v4-explore')} />;
+      case 'v4-submissions':
+        return <MySubmissionsV4 onSelect={id => navigate('v4-program', id)} />;
+      // ── Legacy pages ──
       case 'explore':
         return (
           <ExplorePage
@@ -93,11 +117,12 @@ export default function App() {
       case 'deploy':
         return <DeployPage />;
       default:
-        return <LandingPage onNav={p => navigate(p as AppPage)} />;
+        return <ExploreV4 search={search} onSelect={id => navigate('v4-program', id)} />;
     }
   };
 
   return (
+    <RoleProvider>
     <>
       <AppShell
         page={page}
@@ -115,5 +140,6 @@ export default function App() {
         <HelpAssistant onNav={p => navigate(p as AppPage)} />
       )}
     </>
+    </RoleProvider>
   );
 }

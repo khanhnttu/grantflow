@@ -97,40 +97,54 @@ export function DocsPage({ onNav: _onNav }: { onNav?: (p: string) => void }) {
   return (
     <PageShell
       title="Docs"
-      subtitle="A short guide for sponsors, builders, and reviewers."
+      subtitle="GrantFlowV4 — ranked-prize hackathon guide."
     >
-      <ProseSection title="For sponsors">
-        <p><strong>1. Connect your wallet</strong> — use any EVM wallet on Arc Mainnet (chain ID 5042, RPC https://rpc.mainnet.arc.io). USDC is the only token you need.</p>
-        <p><strong>2. Create a program</strong> — go to the Sponsor tab. Choose a program type (Onchain Build or Open Bounty), set a prize amount per winner, the number of slots, a deadline, and assign reviewers by their wallet addresses.</p>
-        <p><strong>3. Approve USDC + pay</strong> — you will be prompted for two transactions: first an ERC-20 approve (allowing the contract to pull USDC), then the createProgram call which locks prize pool + 1% fee.</p>
-        <p><strong>4. After the deadline</strong> — if any prize slots go unclaimed, call reclaim() from the Sponsor tab to recover the remaining USDC.</p>
+      <ProseSection title="How it works (V4)">
+        <p>
+          GrantFlowV4 runs two-phase hackathons with ranked prizes. The sponsor creates a program with a prize list (1st, 2nd, 3rd…), a submission deadline, a judging deadline, and a panel of judges. USDC is locked in the contract at creation — plus a 1% platform fee.
+        </p>
+        <p>
+          <strong>Phase 1 — Submission</strong> (before submissionDeadline): builders submit their work. Sponsors and judges cannot submit to their own programs.
+        </p>
+        <p>
+          <strong>Phase 2 — Judging</strong> (submissionDeadline to judgingDeadline): judges vote. Each judge has exactly N votes, where N equals the number of prize tiers. One vote per submission per judge. Judges cannot vote on their own submission (the COI guard also prevents this because judges cannot submit).
+        </p>
+        <p>
+          <strong>Finalization</strong> (after judgingDeadline, anyone calls): submissions are ranked by vote count (ties broken by earlier submission ID). The top N submissions with at least 1 vote receive prizes[0], prizes[1], … Any unawarded prizes stay in the contract for the sponsor to reclaim.
+        </p>
       </ProseSection>
 
-      <ProseSection title="For builders">
-        <p><strong>1. Browse programs</strong> — visit the Programs tab to see all active programs, their prize amounts, deadlines, and submission counts.</p>
-        <p><strong>2. Submit</strong> — go to the Builder tab. For Onchain Build programs, provide the address of your deployed smart contract. For Open Bounty programs, provide a link to your work. Only one submission per address per program is allowed.</p>
-        <p><strong>3. Wait for review</strong> — reviewers will evaluate submissions and cast approval votes. You can track approval counts in the Builder tab.</p>
-        <p><strong>4. Claim your prize</strong> — once your submission reaches the approval threshold and a slot is available, a Claim button will appear. Click it to receive USDC directly in your wallet.</p>
+      <ProseSection title="For organizers">
+        <p><strong>1.</strong> Switch to the <em>Organizer</em> role using the role switcher in the top bar.</p>
+        <p><strong>2.</strong> Click <em>Create program</em> in the sidebar and fill in the four-step wizard: basics, prizes, judges, review and pay.</p>
+        <p><strong>3.</strong> You will approve USDC in one transaction, then create the program in a second. The full prize pool is locked immediately; the 1% fee goes to the platform fee recipient.</p>
+        <p><strong>4.</strong> After the judging deadline, anyone may call Finalize. You may then reclaim any unawarded prizes via the program page.</p>
+        <p><strong>Cancel</strong> — if no submissions exist yet, you can cancel the program and recover the full prize pool (fee not returned).</p>
       </ProseSection>
 
-      <ProseSection title="For reviewers">
-        <p><strong>1. You must be assigned</strong> — only wallet addresses the sponsor listed as reviewers can cast approval votes for a program.</p>
-        <p><strong>2. Approve submissions</strong> — go to the Reviewer tab. You will see all submissions for programs where you are a reviewer. Click Approve to cast your vote on-chain.</p>
-        <p><strong>3. Threshold</strong> — a submission is eligible for payout only after it accumulates the number of approvals the sponsor set at creation. You cannot approve the same submission twice, and you cannot approve after the deadline.</p>
-        <p><strong>4. No payment to reviewers</strong> — reviewer roles are not paid by the protocol. Compensation (if any) is handled off-chain between the sponsor and reviewers.</p>
+      <ProseSection title="For hackers">
+        <p><strong>1.</strong> Switch to the <em>Hacker</em> role. Browse programs in <em>Explore V4</em>.</p>
+        <p><strong>2.</strong> Click a program during the Submission phase and submit your work link (Open Bounty) or deployed contract address (Onchain Build). One submission per wallet per program.</p>
+        <p><strong>3.</strong> After finalization, check <em>My submissions</em>. If you won a prize, a Claim button will appear.</p>
+      </ProseSection>
+
+      <ProseSection title="For judges">
+        <p><strong>1.</strong> Switch to the <em>Judge</em> role. You will see programs where you are assigned as a judge.</p>
+        <p><strong>2.</strong> During the Judging phase, open a program and go to the Submissions tab. Vote on submissions you want to reward. You have as many votes as there are prize tiers.</p>
+        <p><strong>3.</strong> You cannot vote on the same submission twice. After the judging deadline, voting closes automatically.</p>
       </ProseSection>
 
       <ProseSection title="Program types">
-        <p><strong>Onchain Build</strong> — the submitter provides a deployed contract address. The contract must have bytecode (not an EOA). One submission per contract address per program.</p>
-        <p><strong>Open Bounty</strong> — the submitter provides a work link. No deployed contract is required. One submission per wallet address per program.</p>
+        <p><strong>Onchain Build</strong> — submit a deployed contract address. The contract must have bytecode (not an EOA). One submission per contract address per program.</p>
+        <p><strong>Open Bounty</strong> — submit a link to your work. One submission per wallet address per program.</p>
       </ProseSection>
 
-      <ProseSection title="Supported categories">
-        <p>Each program has one category: Hackathon, Bounty, Contest, or Referral. Categories are informational and affect how programs appear in filters — they do not change the contract logic.</p>
+      <ProseSection title="Fee model">
+        <p>A 1% platform fee (hard-capped at 5%) is taken from the prize pool at program creation. The fee goes to the feeRecipient address configured in the contract. Fees are not refundable, even on cancel.</p>
       </ProseSection>
 
       <ProseSection title="Network setup">
-        <p>Add Arc Mainnet to your wallet manually if it is not already listed:</p>
+        <p>Add Arc Mainnet to your wallet if it is not already listed:</p>
         <div
           className="rounded-2xl px-4 py-3 space-y-1 font-mono text-xs"
           style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', color: 'var(--ink-2)' }}
@@ -141,6 +155,7 @@ export function DocsPage({ onNav: _onNav }: { onNav?: (p: string) => void }) {
           <p>Currency symbol: USDC</p>
           <p>Block explorer: https://explorer.arc.io</p>
         </div>
+        <p>For testing, use Arc Testnet (chain ID 5042002). The "Get test USDC" button in the Arc Studio sidebar funds your wallet with testnet USDC.</p>
       </ProseSection>
     </PageShell>
   );
