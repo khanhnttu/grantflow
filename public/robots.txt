@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://preeminent-lily-d87c8b.netlify.app/sitemap.xml

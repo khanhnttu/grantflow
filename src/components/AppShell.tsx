@@ -3,18 +3,23 @@ import { ConnectKitButton } from 'connectkit';
 import {
   Compass, PlusCircle, FileText,
   BookOpen, Sun, Moon, Menu, ChevronRight,
-  Github, ExternalLink, Code2, Scale, List
+  Github, ExternalLink, Code2, Scale, List,
+  Info, HelpCircle, GitCompare, Cpu,
 } from 'lucide-react';
 import { GRANTFLOW_ADDRESS } from '@/lib/grantflow';
 import { ACTIVE_CHAIN_ID } from '@/lib/chainConfig';
 import { RoleSwitcher, useRole } from '@/components/RoleSwitcher';
+import { useNetworkHealth } from '@/hooks/useNetworkHealth';
+import { useI18n } from '@/hooks/useI18n';
+import type { Lang } from '@/lib/i18n';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type AppPage =
   | 'landing' | 'explore' | 'sponsor' | 'builder' | 'reviewer'
   | 'program' | 'about' | 'docs' | 'terms' | 'deploy'
-  | 'v4-explore' | 'v4-program' | 'v4-create' | 'v4-submissions';
+  | 'v4-explore' | 'v4-program' | 'v4-create' | 'v4-submissions'
+  | 'how-it-works' | 'compare' | 'developers' | 'built-vs-planned';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -39,21 +44,21 @@ const EXPLORER = ACTIVE_CHAIN_ID === 5042
 
 // ── Role-aware nav ────────────────────────────────────────────────────────────
 const NAV_HACKER = [
-  { id: 'v4-explore' as AppPage,     label: 'Explore V4',    icon: Compass   },
-  { id: 'v4-submissions' as AppPage, label: 'My submissions',icon: Code2     },
-  { id: 'explore' as AppPage,        label: 'Legacy explore', icon: List     },
-  { id: 'docs' as AppPage,           label: 'Guide',          icon: BookOpen },
+  { id: 'v4-explore' as AppPage,     label: 'nav.explore',      icon: Compass   },
+  { id: 'v4-submissions' as AppPage, label: 'nav.submissions',  icon: Code2     },
+  { id: 'how-it-works' as AppPage,   label: 'nav.howItWorks',   icon: HelpCircle },
+  { id: 'docs' as AppPage,           label: 'nav.docs',         icon: BookOpen  },
 ];
 const NAV_ORGANIZER = [
-  { id: 'v4-explore' as AppPage,  label: 'All programs', icon: Compass    },
-  { id: 'v4-create' as AppPage,   label: 'Create program', icon: PlusCircle },
-  { id: 'explore' as AppPage,     label: 'Legacy explore', icon: List      },
-  { id: 'docs' as AppPage,        label: 'Guide',           icon: BookOpen },
+  { id: 'v4-explore' as AppPage,     label: 'nav.explore',      icon: Compass    },
+  { id: 'v4-create' as AppPage,      label: 'nav.create',       icon: PlusCircle },
+  { id: 'how-it-works' as AppPage,   label: 'nav.howItWorks',   icon: HelpCircle },
+  { id: 'docs' as AppPage,           label: 'nav.docs',         icon: BookOpen   },
 ];
 const NAV_JUDGE = [
-  { id: 'v4-explore' as AppPage, label: 'Programs to judge', icon: Scale    },
-  { id: 'explore' as AppPage,    label: 'Legacy explore',    icon: List     },
-  { id: 'docs' as AppPage,       label: 'Guide',             icon: BookOpen },
+  { id: 'v4-explore' as AppPage,     label: 'nav.judge',        icon: Scale    },
+  { id: 'how-it-works' as AppPage,   label: 'nav.howItWorks',   icon: HelpCircle },
+  { id: 'docs' as AppPage,           label: 'nav.docs',         icon: BookOpen  },
 ];
 
 // ── Logo mark SVG ─────────────────────────────────────────────────────────────
@@ -69,6 +74,26 @@ function LogoMark({ size = 28 }: { size?: number }) {
   );
 }
 
+// ── Language switcher ─────────────────────────────────────────────────────────
+function LangSwitcher() {
+  const { lang, setLang } = useI18n();
+  return (
+    <button
+      onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
+      className="px-2 py-1 rounded-lg text-xs font-semibold transition-colors"
+      style={{
+        background: 'var(--surface-muted)',
+        border: '1px solid var(--border)',
+        color: 'var(--muted)',
+      }}
+      aria-label={`Switch to ${lang === 'en' ? 'Vietnamese' : 'English'}`}
+      title={lang === 'en' ? 'Switch to Vietnamese' : 'Switch to English'}
+    >
+      {lang === 'en' ? 'VI' : 'EN'}
+    </button>
+  );
+}
+
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 function Sidebar({
   page, onNav, mobileOpen, onMobileClose,
@@ -79,6 +104,7 @@ function Sidebar({
   onMobileClose: () => void;
 }) {
   const { role } = useRole();
+  const { t } = useI18n();
   const NAV = role === 'organizer' ? NAV_ORGANIZER : role === 'judge' ? NAV_JUDGE : NAV_HACKER;
 
   return (
@@ -103,6 +129,7 @@ function Sidebar({
           role="button"
           tabIndex={0}
           onKeyDown={e => e.key === 'Enter' && onNav('landing')}
+          aria-label="Go to home"
         >
           <LogoMark />
           <span className="display font-semibold text-white text-[15px] tracking-tight">
@@ -115,14 +142,12 @@ function Sidebar({
           <div className="px-3 mb-3">
             <button
               onClick={() => { onNav('v4-create'); onMobileClose(); }}
-              className="w-full flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all"
-              style={{
-                background: '#4f9ef8',
-                color: '#080e17',
-              }}
+              className="w-full flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all focus-visible:outline-2 focus-visible:outline-offset-2"
+              style={{ background: '#4f9ef8', color: '#080e17' }}
+              aria-label="Create a new program"
             >
-              <PlusCircle size={15} />
-              Create program
+              <PlusCircle size={15} aria-hidden />
+              {t('nav.create')}
             </button>
           </div>
         )}
@@ -135,17 +160,47 @@ function Sidebar({
               <button
                 key={id}
                 onClick={() => { onNav(id); onMobileClose(); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-left transition-all"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-left transition-all focus-visible:outline-2 focus-visible:outline-offset-1"
                 style={{
                   background: active ? 'var(--sidebar-active)' : 'transparent',
                   color: active ? '#fff' : 'var(--sidebar-fg)',
                 }}
+                aria-current={active ? 'page' : undefined}
                 onMouseEnter={e => { if (!active) (e.currentTarget).style.background = 'var(--sidebar-hover)'; }}
                 onMouseLeave={e => { if (!active) (e.currentTarget).style.background = 'transparent'; }}
               >
-                <Icon size={16} style={{ color: active ? 'var(--sidebar-accent)' : 'var(--sidebar-fg)', flexShrink: 0 }} />
-                {label}
-                {active && <ChevronRight size={12} className="ml-auto opacity-50" />}
+                <Icon size={16} aria-hidden style={{ color: active ? 'var(--sidebar-accent)' : 'var(--sidebar-fg)', flexShrink: 0 }} />
+                {t(label as Parameters<typeof t>[0])}
+                {active && <ChevronRight size={12} className="ml-auto opacity-50" aria-hidden />}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Secondary nav */}
+        <nav className="px-2 pb-1 space-y-0.5" aria-label="Secondary navigation">
+          {([
+            { id: 'compare'         as AppPage, label: 'nav.compare',        icon: GitCompare },
+            { id: 'developers'      as AppPage, label: 'nav.developers',      icon: Cpu        },
+            { id: 'built-vs-planned'as AppPage, label: 'nav.builtVsPlanned',  icon: List       },
+          ] as const).map(({ id, label, icon: Icon }) => {
+            const active = page === id;
+            return (
+              <button
+                key={id}
+                onClick={() => { onNav(id); onMobileClose(); }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-left transition-all focus-visible:outline-2"
+                style={{
+                  background: active ? 'var(--sidebar-active)' : 'transparent',
+                  color: active ? '#fff' : 'var(--sidebar-fg)',
+                  opacity: active ? 1 : 0.7,
+                }}
+                aria-current={active ? 'page' : undefined}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'var(--sidebar-hover)'; e.currentTarget.style.opacity = '1'; } }}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.opacity = '0.7'; } }}
+              >
+                <Icon size={13} aria-hidden style={{ color: active ? 'var(--sidebar-accent)' : 'var(--sidebar-fg)', flexShrink: 0 }} />
+                {t(label)}
               </button>
             );
           })}
@@ -160,10 +215,11 @@ function Sidebar({
             href={`${EXPLORER}/address/${GRANTFLOW_ADDRESS}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 font-mono text-[11px] transition-colors"
+            className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80"
             style={{ color: 'var(--sidebar-accent)' }}
+            aria-label={`View contract ${GRANTFLOW_ADDRESS} on explorer`}
           >
-            <ExternalLink size={10} />
+            <ExternalLink size={10} aria-hidden />
             {short(GRANTFLOW_ADDRESS)}
           </a>
           <div className="flex items-center gap-2 mt-3">
@@ -171,30 +227,68 @@ function Sidebar({
               href="https://github.com/khanhnttu/grantflow"
               target="_blank"
               rel="noopener noreferrer"
-              className="transition-colors"
+              className="transition-colors hover:opacity-80"
               style={{ color: 'var(--sidebar-fg)' }}
+              aria-label="GitHub repository"
             >
-              <Github size={14} />
+              <Github size={14} aria-hidden />
             </a>
             <button
               onClick={() => { onNav('terms'); onMobileClose(); }}
-              className="text-[11px] transition-colors hover:text-white"
+              className="text-[11px] transition-colors hover:text-white focus-visible:outline-2"
               style={{ color: 'var(--sidebar-fg)' }}
             >
-              Terms
+              {t('nav.terms')}
             </button>
-            <span style={{ color: 'var(--sidebar-fg)', opacity: 0.4 }}>·</span>
+            <span style={{ color: 'var(--sidebar-fg)', opacity: 0.4 }} aria-hidden>·</span>
             <button
               onClick={() => { onNav('about'); onMobileClose(); }}
-              className="text-[11px] transition-colors hover:text-white"
+              className="text-[11px] transition-colors hover:text-white focus-visible:outline-2"
               style={{ color: 'var(--sidebar-fg)' }}
             >
-              About
+              {t('nav.about')}
             </button>
           </div>
         </div>
       </aside>
     </>
+  );
+}
+
+// ── Trust pill ────────────────────────────────────────────────────────────────
+function TrustPill() {
+  const isMainnet = ACTIVE_CHAIN_ID === 5042;
+  const { blockNumber, health } = useNetworkHealth();
+  const { t } = useI18n();
+
+  const dotColor = health === 'healthy' ? '#22c55e' : health === 'slow' ? '#f59e0b' : '#ef4444';
+  const bgColor  = isMainnet ? 'rgba(79,158,248,0.10)' : 'rgba(5,150,105,0.10)';
+  const textColor = isMainnet ? '#4f9ef8' : '#059669';
+  const borderColor = isMainnet ? 'rgba(79,158,248,0.22)' : 'rgba(5,150,105,0.22)';
+
+  const networkLabel = isMainnet ? t('trust.mainnet') : t('trust.testnet');
+  const healthLabel  = health === 'healthy' ? t('trust.healthy') : health === 'slow' ? t('trust.slow') : t('trust.down');
+
+  return (
+    <div
+      className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold select-none"
+      style={{ background: bgColor, color: textColor, border: `1px solid ${borderColor}` }}
+      title={`${networkLabel} · ${healthLabel}`}
+      role="status"
+      aria-label={`Network: ${networkLabel}${blockNumber ? `, block ${blockNumber.toString()}` : ''}, ${healthLabel}`}
+    >
+      <span
+        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${health === 'healthy' ? 'animate-pulse' : ''}`}
+        style={{ background: dotColor }}
+        aria-hidden
+      />
+      {networkLabel}
+      {blockNumber !== null && (
+        <span className="opacity-60 font-mono text-[10px] ml-0.5">
+          #{blockNumber.toString()}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -210,82 +304,94 @@ function TopBar({
   onSearch: (v: string) => void;
   onMobileMenu: () => void;
 }) {
-  const isMainnet = ACTIVE_CHAIN_ID === 5042;
+  const { t } = useI18n();
 
   return (
-    <header className="app-topbar">
+    <header className="app-topbar" role="banner">
       {/* Mobile hamburger */}
       <button
-        className="md:hidden mr-1 rounded-lg p-1.5 transition-colors"
+        className="md:hidden mr-1 rounded-lg p-1.5 transition-colors focus-visible:outline-2"
         style={{ color: 'var(--muted)' }}
         onClick={onMobileMenu}
-        aria-label="Open menu"
+        aria-label="Open navigation menu"
+        aria-expanded={false}
       >
-        <Menu size={18} />
+        <Menu size={18} aria-hidden />
       </button>
 
       {/* Search */}
       <div className="flex-1 max-w-xs relative">
+        <label htmlFor="global-search" className="sr-only">Search programs</label>
         <input
+          id="global-search"
           type="search"
           value={search}
           onChange={e => onSearch(e.target.value)}
-          placeholder="Search programs…"
-          className="w-full rounded-lg px-3 py-1.5 text-sm outline-none transition-all"
+          placeholder={t('explore.search')}
+          className="w-full rounded-lg px-3 py-1.5 text-sm outline-none transition-all focus-visible:ring-2"
           style={{
             background: 'var(--surface-muted)',
             border: '1px solid var(--border)',
             color: 'var(--ink)',
           }}
-          onFocus={() => { if (page !== 'explore') onNav('explore'); }}
+          onFocus={() => { if (page !== 'v4-explore') onNav('v4-explore'); }}
+          aria-label="Search programs"
         />
       </div>
 
-      <div className="flex items-center gap-2 ml-auto">
+      <div className="flex items-center gap-2 ml-auto" role="toolbar" aria-label="Header actions">
         {/* Role switcher */}
         <RoleSwitcher />
-        {/* Network badge */}
-        <div
-          className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
-          style={{
-            background: isMainnet ? 'rgba(79,158,248,0.12)' : 'rgba(5,150,105,0.12)',
-            color: isMainnet ? '#4f9ef8' : '#059669',
-            border: `1px solid ${isMainnet ? 'rgba(79,158,248,0.25)' : 'rgba(5,150,105,0.25)'}`,
-          }}
-        >
-          <span
-            className="w-1.5 h-1.5 rounded-full animate-pulse"
-            style={{ background: isMainnet ? '#4f9ef8' : '#059669' }}
-          />
-          {isMainnet ? 'Arc Mainnet' : 'Arc Testnet'}
-        </div>
 
-        {/* Theme toggle */}
-        <button
-          onClick={onThemeToggle}
-          className="rounded-lg p-1.5 transition-colors"
+        {/* Trust pill */}
+        <TrustPill />
+
+        {/* GitHub */}
+        <a
+          href="https://github.com/khanhnttu/grantflow"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden sm:flex rounded-lg p-1.5 transition-colors hover:opacity-80 focus-visible:outline-2"
           style={{
             background: 'var(--surface-muted)',
             border: '1px solid var(--border)',
             color: 'var(--muted)',
           }}
-          aria-label="Toggle theme"
+          aria-label="GitHub repository"
         >
-          {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          <Github size={15} aria-hidden />
+        </a>
+
+        {/* Language switcher */}
+        <LangSwitcher />
+
+        {/* Theme toggle */}
+        <button
+          onClick={onThemeToggle}
+          className="rounded-lg p-1.5 transition-colors focus-visible:outline-2"
+          style={{
+            background: 'var(--surface-muted)',
+            border: '1px solid var(--border)',
+            color: 'var(--muted)',
+          }}
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {theme === 'dark' ? <Sun size={15} aria-hidden /> : <Moon size={15} aria-hidden />}
         </button>
 
         {/* Docs */}
         <button
           onClick={() => onNav('docs')}
-          className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+          className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2"
           style={{
             background: 'var(--surface-muted)',
             border: '1px solid var(--border)',
             color: 'var(--muted)',
           }}
+          aria-label="Open documentation"
         >
-          <FileText size={13} />
-          Docs
+          <FileText size={13} aria-hidden />
+          {t('nav.docs')}
         </button>
 
         {/* Wallet */}
@@ -339,10 +445,14 @@ export function AppShell({
           onSearch={onSearch}
           onMobileMenu={() => setMobileOpen(true)}
         />
-        <main className="app-content">
+        <main className="app-content" id="main-content" tabIndex={-1}>
           {children}
         </main>
       </div>
     </div>
   );
 }
+
+// Re-export for use elsewhere
+export type { Lang };
+export { Info };
