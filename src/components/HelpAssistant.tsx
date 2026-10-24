@@ -185,8 +185,9 @@ export function HelpAssistant({ onNav }: { onNav: (page: string) => void }) {
         <div
           className="fixed z-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden"
           style={{
-            bottom: '5.5rem',
-            left: '1.25rem',
+            bottom: '6rem',   /* above bubble (3.25rem) + 16px gap + badge clearance */
+            right: '1.25rem',
+            left: 'auto',
             width: 'min(380px, calc(100vw - 2.5rem))',
             height: 'min(520px, calc(100dvh - 8rem))',
             background: 'var(--ha-bg)',
@@ -312,12 +313,15 @@ export function HelpAssistant({ onNav }: { onNav: (page: string) => void }) {
       )}
 
       {/* ── Bubble trigger ──────────────────────────────────────────────── */}
+      {/* Positioned bottom-right; 'bottom' leaves clearance above Arc Studio badge (~40px)
+          and any Netlify badge (~40px), with 16px spacing between each layer. */}
       <button
         onClick={() => setOpen(v => !v)}
         className="fixed z-50 flex items-center justify-center rounded-full shadow-xl transition-all hover:scale-105 active:scale-95"
         style={{
           bottom: '1.5rem',
-          left: '1.25rem',
+          right: '1.25rem',
+          left: 'auto',
           width: '3.25rem',
           height: '3.25rem',
           background: 'var(--accent)',

@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ConnectKitButton } from 'connectkit';
 import {
-  Compass, PlusCircle, FileText,
-  BookOpen, Sun, Moon, Menu, ChevronRight,
-  Github, ExternalLink, Code2, Scale, List,
-  Info, HelpCircle, GitCompare, Cpu,
+  Compass, PlusCircle, FileText, BookOpen,
+  Sun, Moon, Menu, ChevronRight, Github,
+  ExternalLink, Code2, Scale, GitCompare,
+  Cpu, List, PanelLeftClose, PanelLeftOpen,
+  MoreHorizontal, HelpCircle,
 } from 'lucide-react';
 import { GRANTFLOW_ADDRESS } from '@/lib/grantflow';
 import { ACTIVE_CHAIN_ID } from '@/lib/chainConfig';
@@ -31,7 +32,7 @@ interface AppShellProps {
   search: string;
   onSearch: (v: string) => void;
   children: React.ReactNode;
-  /** If true renders without sidebar (landing page, info pages) */
+  /** If true renders without sidebar (marketing/info pages) */
   bare?: boolean;
 }
 
@@ -42,24 +43,31 @@ const EXPLORER = ACTIVE_CHAIN_ID === 5042
   ? 'https://explorer.arc.io'
   : 'https://explorer.testnet.arc.io';
 
-// ── Role-aware nav ────────────────────────────────────────────────────────────
+// ── Role-aware primary nav (sidebar) ─────────────────────────────────────────
 const NAV_HACKER = [
-  { id: 'v4-explore' as AppPage,     label: 'nav.explore',      icon: Compass   },
-  { id: 'v4-submissions' as AppPage, label: 'nav.submissions',  icon: Code2     },
-  { id: 'how-it-works' as AppPage,   label: 'nav.howItWorks',   icon: HelpCircle },
-  { id: 'docs' as AppPage,           label: 'nav.docs',         icon: BookOpen  },
+  { id: 'v4-explore'     as AppPage, label: 'nav.explore',     icon: Compass    },
+  { id: 'v4-submissions' as AppPage, label: 'nav.submissions', icon: Code2      },
+  { id: 'docs'           as AppPage, label: 'nav.docs',        icon: BookOpen   },
 ];
 const NAV_ORGANIZER = [
-  { id: 'v4-explore' as AppPage,     label: 'nav.explore',      icon: Compass    },
-  { id: 'v4-create' as AppPage,      label: 'nav.create',       icon: PlusCircle },
-  { id: 'how-it-works' as AppPage,   label: 'nav.howItWorks',   icon: HelpCircle },
-  { id: 'docs' as AppPage,           label: 'nav.docs',         icon: BookOpen   },
+  { id: 'v4-explore' as AppPage, label: 'nav.explore', icon: Compass    },
+  { id: 'v4-create'  as AppPage, label: 'nav.create',  icon: PlusCircle },
+  { id: 'docs'       as AppPage, label: 'nav.docs',    icon: BookOpen   },
 ];
 const NAV_JUDGE = [
-  { id: 'v4-explore' as AppPage,     label: 'nav.judge',        icon: Scale    },
-  { id: 'how-it-works' as AppPage,   label: 'nav.howItWorks',   icon: HelpCircle },
-  { id: 'docs' as AppPage,           label: 'nav.docs',         icon: BookOpen  },
+  { id: 'v4-explore'   as AppPage, label: 'nav.judge', icon: Scale    },
+  { id: 'docs'         as AppPage, label: 'nav.docs',  icon: BookOpen },
 ];
+
+// ── Guide links (topbar More menu) ───────────────────────────────────────────
+const GUIDE_NAV = [
+  { id: 'how-it-works'    as AppPage, label: 'nav.howItWorks',    icon: HelpCircle },
+  { id: 'compare'         as AppPage, label: 'nav.compare',       icon: GitCompare },
+  { id: 'developers'      as AppPage, label: 'nav.developers',    icon: Cpu        },
+  { id: 'built-vs-planned'as AppPage, label: 'nav.builtVsPlanned',icon: List       },
+  { id: 'about'           as AppPage, label: 'nav.about',         icon: FileText   },
+  { id: 'terms'           as AppPage, label: 'nav.terms',         icon: FileText   },
+] as const;
 
 // ── Logo mark SVG ─────────────────────────────────────────────────────────────
 function LogoMark({ size = 28 }: { size?: number }) {
@@ -80,7 +88,7 @@ function LangSwitcher() {
   return (
     <button
       onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
-      className="px-2 py-1 rounded-lg text-xs font-semibold transition-colors"
+      className="px-2 py-1 rounded-lg text-xs font-semibold transition-colors flex-shrink-0"
       style={{
         background: 'var(--surface-muted)',
         border: '1px solid var(--border)',
@@ -91,6 +99,80 @@ function LangSwitcher() {
     >
       {lang === 'en' ? 'VI' : 'EN'}
     </button>
+  );
+}
+
+// ── More dropdown (Guide / secondary links) ───────────────────────────────────
+function MoreMenu({ page, onNav }: { page: AppPage; onNav: (p: AppPage) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const guidePages: AppPage[] = GUIDE_NAV.map(g => g.id);
+  const isGuide = guidePages.includes(page);
+
+  return (
+    <div ref={ref} className="relative hidden sm:block">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 flex-shrink-0"
+        style={{
+          background: isGuide ? 'var(--accent)' : 'var(--surface-muted)',
+          border: `1px solid ${isGuide ? 'var(--accent)' : 'var(--border)'}`,
+          color: isGuide ? '#fff' : 'var(--muted)',
+        }}
+        aria-label="Open guide menu"
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        <MoreHorizontal size={13} aria-hidden />
+        <span className="hidden md:inline">Guide</span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-full mt-1.5 rounded-xl shadow-xl z-50 py-1 min-w-[200px]"
+          style={{
+            background: 'var(--surface-strong)',
+            border: '1px solid var(--border)',
+          }}
+          role="menu"
+          aria-label="Guide menu"
+        >
+          {GUIDE_NAV.map(({ id, label, icon: Icon }) => {
+            const active = page === id;
+            return (
+              <button
+                key={id}
+                role="menuitem"
+                onClick={() => { onNav(id); setOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors"
+                style={{
+                  background: active ? 'var(--surface-muted)' : 'transparent',
+                  color: active ? 'var(--accent)' : 'var(--ink)',
+                  fontWeight: active ? 600 : 400,
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget).style.background = 'var(--surface-muted)'; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget).style.background = 'transparent'; }}
+              >
+                <Icon size={14} aria-hidden style={{ color: active ? 'var(--accent)' : 'var(--muted)', flexShrink: 0 }} />
+                {t(label)}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -152,8 +234,8 @@ function Sidebar({
           </div>
         )}
 
-        {/* Nav items */}
-        <nav className="flex-1 px-2 space-y-0.5">
+        {/* Primary nav — role-aware */}
+        <nav className="flex-1 px-2 space-y-0.5" aria-label="Primary navigation">
           {NAV.map(({ id, label, icon: Icon }) => {
             const active = page === id;
             return (
@@ -177,78 +259,36 @@ function Sidebar({
           })}
         </nav>
 
-        {/* Secondary nav */}
-        <nav className="px-2 pb-1 space-y-0.5" aria-label="Secondary navigation">
-          {([
-            { id: 'compare'         as AppPage, label: 'nav.compare',        icon: GitCompare },
-            { id: 'developers'      as AppPage, label: 'nav.developers',      icon: Cpu        },
-            { id: 'built-vs-planned'as AppPage, label: 'nav.builtVsPlanned',  icon: List       },
-          ] as const).map(({ id, label, icon: Icon }) => {
-            const active = page === id;
-            return (
-              <button
-                key={id}
-                onClick={() => { onNav(id); onMobileClose(); }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-left transition-all focus-visible:outline-2"
-                style={{
-                  background: active ? 'var(--sidebar-active)' : 'transparent',
-                  color: active ? '#fff' : 'var(--sidebar-fg)',
-                  opacity: active ? 1 : 0.7,
-                }}
-                aria-current={active ? 'page' : undefined}
-                onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'var(--sidebar-hover)'; e.currentTarget.style.opacity = '1'; } }}
-                onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.opacity = '0.7'; } }}
-              >
-                <Icon size={13} aria-hidden style={{ color: active ? 'var(--sidebar-accent)' : 'var(--sidebar-fg)', flexShrink: 0 }} />
-                {t(label)}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Footer */}
-        <div className="px-4 py-4 border-t" style={{ borderColor: 'var(--sidebar-border)' }}>
-          <div className="text-xs mb-2" style={{ color: 'var(--sidebar-fg)' }}>
+        {/* Sidebar bottom: contract link + GitHub only */}
+        <div
+          className="px-4 py-4 border-t flex-shrink-0"
+          style={{ borderColor: 'var(--sidebar-border)' }}
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5 opacity-50" style={{ color: 'var(--sidebar-fg)' }}>
             Contract
-          </div>
+          </p>
           <a
             href={`${EXPLORER}/address/${GRANTFLOW_ADDRESS}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80"
+            className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80 mb-3"
             style={{ color: 'var(--sidebar-accent)' }}
             aria-label={`View contract ${GRANTFLOW_ADDRESS} on explorer`}
           >
             <ExternalLink size={10} aria-hidden />
             {short(GRANTFLOW_ADDRESS)}
           </a>
-          <div className="flex items-center gap-2 mt-3">
-            <a
-              href="https://github.com/khanhnttu/grantflow"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="transition-colors hover:opacity-80"
-              style={{ color: 'var(--sidebar-fg)' }}
-              aria-label="GitHub repository"
-            >
-              <Github size={14} aria-hidden />
-            </a>
-            <button
-              onClick={() => { onNav('terms'); onMobileClose(); }}
-              className="text-[11px] transition-colors hover:text-white focus-visible:outline-2"
-              style={{ color: 'var(--sidebar-fg)' }}
-            >
-              {t('nav.terms')}
-            </button>
-            <span style={{ color: 'var(--sidebar-fg)', opacity: 0.4 }} aria-hidden>·</span>
-            <button
-              onClick={() => { onNav('about'); onMobileClose(); }}
-              className="text-[11px] transition-colors hover:text-white focus-visible:outline-2"
-              style={{ color: 'var(--sidebar-fg)' }}
-            >
-              {t('nav.about')}
-            </button>
-          </div>
+          <a
+            href="https://github.com/khanhnttu/grantflow"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-[11px] transition-colors hover:opacity-80"
+            style={{ color: 'var(--sidebar-fg)', opacity: 0.6 }}
+            aria-label="GitHub repository"
+          >
+            <Github size={12} aria-hidden />
+            GitHub
+          </a>
         </div>
       </aside>
     </>
@@ -262,7 +302,7 @@ function TrustPill() {
   const { t } = useI18n();
 
   const dotColor = health === 'healthy' ? '#22c55e' : health === 'slow' ? '#f59e0b' : '#ef4444';
-  const bgColor  = isMainnet ? 'rgba(79,158,248,0.10)' : 'rgba(5,150,105,0.10)';
+  const bgColor   = isMainnet ? 'rgba(79,158,248,0.10)' : 'rgba(5,150,105,0.10)';
   const textColor = isMainnet ? '#4f9ef8' : '#059669';
   const borderColor = isMainnet ? 'rgba(79,158,248,0.22)' : 'rgba(5,150,105,0.22)';
 
@@ -271,11 +311,11 @@ function TrustPill() {
 
   return (
     <div
-      className="hidden sm:flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold select-none"
+      className="hidden md:flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold select-none flex-shrink-0"
       style={{ background: bgColor, color: textColor, border: `1px solid ${borderColor}` }}
       title={`${networkLabel} · ${healthLabel}`}
       role="status"
-      aria-label={`Network: ${networkLabel}${blockNumber ? `, block ${blockNumber.toString()}` : ''}, ${healthLabel}`}
+      aria-label={`Network: ${networkLabel}${blockNumber !== null ? `, block ${blockNumber.toString()}` : ''}, ${healthLabel}`}
     >
       <span
         className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${health === 'healthy' ? 'animate-pulse' : ''}`}
@@ -294,7 +334,8 @@ function TrustPill() {
 
 // ── TopBar ────────────────────────────────────────────────────────────────────
 function TopBar({
-  page, onNav, theme, onThemeToggle, search, onSearch, onMobileMenu,
+  page, onNav, theme, onThemeToggle, search, onSearch,
+  onMobileMenu, sidebarCollapsed, onToggleSidebar, bare,
 }: {
   page: AppPage;
   onNav: (p: AppPage) => void;
@@ -303,55 +344,105 @@ function TopBar({
   search: string;
   onSearch: (v: string) => void;
   onMobileMenu: () => void;
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
+  bare?: boolean;
 }) {
   const { t } = useI18n();
 
   return (
-    <header className="app-topbar" role="banner">
-      {/* Mobile hamburger */}
-      <button
-        className="md:hidden mr-1 rounded-lg p-1.5 transition-colors focus-visible:outline-2"
-        style={{ color: 'var(--muted)' }}
-        onClick={onMobileMenu}
-        aria-label="Open navigation menu"
-        aria-expanded={false}
-      >
-        <Menu size={18} aria-hidden />
-      </button>
-
-      {/* Search */}
-      <div className="flex-1 max-w-xs relative">
-        <label htmlFor="global-search" className="sr-only">Search programs</label>
-        <input
-          id="global-search"
-          type="search"
-          value={search}
-          onChange={e => onSearch(e.target.value)}
-          placeholder={t('explore.search')}
-          className="w-full rounded-lg px-3 py-1.5 text-sm outline-none transition-all focus-visible:ring-2"
+    <header
+      className={`app-topbar${bare ? ' app-topbar--bare' : ''}`}
+      role="banner"
+    >
+      {/* Sidebar toggle — desktop (with icon + aria-label) */}
+      {!bare && (
+        <button
+          className="hidden md:flex items-center justify-center rounded-lg p-1.5 transition-colors focus-visible:outline-2 flex-shrink-0"
           style={{
             background: 'var(--surface-muted)',
             border: '1px solid var(--border)',
-            color: 'var(--ink)',
+            color: 'var(--muted)',
           }}
-          onFocus={() => { if (page !== 'v4-explore') onNav('v4-explore'); }}
-          aria-label="Search programs"
-        />
-      </div>
+          onClick={onToggleSidebar}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {sidebarCollapsed
+            ? <PanelLeftOpen size={16} aria-hidden />
+            : <PanelLeftClose size={16} aria-hidden />
+          }
+        </button>
+      )}
+
+      {/* Mobile hamburger */}
+      {!bare && (
+        <button
+          className="md:hidden flex items-center justify-center rounded-lg p-1.5 transition-colors focus-visible:outline-2 flex-shrink-0"
+          style={{
+            background: 'var(--surface-muted)',
+            border: '1px solid var(--border)',
+            color: 'var(--muted)',
+          }}
+          onClick={onMobileMenu}
+          aria-label="Open navigation menu"
+        >
+          <Menu size={18} aria-hidden />
+        </button>
+      )}
+
+      {/* Logo (bare/marketing topbar) */}
+      {bare && (
+        <button
+          onClick={() => onNav('landing')}
+          className="flex items-center gap-2 mr-2 flex-shrink-0"
+          aria-label="Go to home"
+        >
+          <LogoMark size={24} />
+          <span className="display font-semibold text-sm tracking-tight" style={{ color: 'var(--ink)' }}>
+            GrantFlow
+          </span>
+        </button>
+      )}
+
+      {/* Search — hidden on bare/marketing pages */}
+      {!bare && (
+        <div className="flex-1 min-w-0 max-w-xs relative">
+          <label htmlFor="global-search" className="sr-only">Search programs</label>
+          <input
+            id="global-search"
+            type="search"
+            value={search}
+            onChange={e => onSearch(e.target.value)}
+            placeholder={t('explore.search')}
+            className="w-full rounded-lg px-3 py-1.5 text-sm outline-none transition-all focus-visible:ring-2"
+            style={{
+              background: 'var(--surface-muted)',
+              border: '1px solid var(--border)',
+              color: 'var(--ink)',
+            }}
+            onFocus={() => { if (page !== 'v4-explore') onNav('v4-explore'); }}
+            aria-label="Search programs"
+          />
+        </div>
+      )}
 
       <div className="flex items-center gap-2 ml-auto" role="toolbar" aria-label="Header actions">
-        {/* Role switcher */}
-        <RoleSwitcher />
+        {/* Role switcher (app pages only) */}
+        {!bare && <RoleSwitcher />}
 
         {/* Trust pill */}
         <TrustPill />
+
+        {/* Guide / More dropdown */}
+        <MoreMenu page={page} onNav={onNav} />
 
         {/* GitHub */}
         <a
           href="https://github.com/khanhnttu/grantflow"
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden sm:flex rounded-lg p-1.5 transition-colors hover:opacity-80 focus-visible:outline-2"
+          className="hidden sm:flex items-center justify-center rounded-lg p-1.5 transition-colors hover:opacity-80 focus-visible:outline-2 flex-shrink-0"
           style={{
             background: 'var(--surface-muted)',
             border: '1px solid var(--border)',
@@ -368,31 +459,34 @@ function TopBar({
         {/* Theme toggle */}
         <button
           onClick={onThemeToggle}
-          className="rounded-lg p-1.5 transition-colors focus-visible:outline-2"
+          className="flex items-center justify-center rounded-lg p-1.5 transition-colors focus-visible:outline-2 flex-shrink-0"
           style={{
             background: 'var(--surface-muted)',
             border: '1px solid var(--border)',
             color: 'var(--muted)',
           }}
           aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-pressed={theme === 'dark'}
         >
           {theme === 'dark' ? <Sun size={15} aria-hidden /> : <Moon size={15} aria-hidden />}
         </button>
 
-        {/* Docs */}
-        <button
-          onClick={() => onNav('docs')}
-          className="hidden sm:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2"
-          style={{
-            background: 'var(--surface-muted)',
-            border: '1px solid var(--border)',
-            color: 'var(--muted)',
-          }}
-          aria-label="Open documentation"
-        >
-          <FileText size={13} aria-hidden />
-          {t('nav.docs')}
-        </button>
+        {/* Docs guide button (app pages only) */}
+        {!bare && (
+          <button
+            onClick={() => onNav('docs')}
+            className="hidden lg:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 flex-shrink-0"
+            style={{
+              background: 'var(--surface-muted)',
+              border: '1px solid var(--border)',
+              color: 'var(--muted)',
+            }}
+            aria-label="Open documentation"
+          >
+            <FileText size={13} aria-hidden />
+            {t('nav.docs')}
+          </button>
+        )}
 
         {/* Wallet */}
         <ConnectKitButton />
@@ -407,6 +501,7 @@ export function AppShell({
   search, onSearch, children, bare,
 }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Close mobile menu on resize
   useEffect(() => {
@@ -419,23 +514,42 @@ export function AppShell({
     onNav(p, _id);
   }, [onNav]);
 
+  // ── Marketing / bare layout ────────────────────────────────────────────────
   if (bare) {
     return (
-      <div style={{ color: 'var(--ink)' }}>
-        {children}
+      <div style={{ color: 'var(--ink)', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+        <TopBar
+          page={page}
+          onNav={handleNav}
+          theme={theme}
+          onThemeToggle={onThemeToggle}
+          search={search}
+          onSearch={onSearch}
+          onMobileMenu={() => {}}
+          sidebarCollapsed={false}
+          onToggleSidebar={() => {}}
+          bare
+        />
+        <main id="main-content" tabIndex={-1} className="px-4 sm:px-6" style={{ flex: 1 }}>
+          {children}
+        </main>
       </div>
     );
   }
 
+  // ── App shell layout ───────────────────────────────────────────────────────
   return (
-    <div className="app-shell" style={{ background: 'var(--bg)' }}>
+    <div
+      className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}
+      style={{ background: 'var(--bg)' }}
+    >
       <Sidebar
         page={page}
         onNav={handleNav}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className="app-main">
+      <div className={`app-main${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
         <TopBar
           page={page}
           onNav={handleNav}
@@ -444,6 +558,8 @@ export function AppShell({
           search={search}
           onSearch={onSearch}
           onMobileMenu={() => setMobileOpen(true)}
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={() => setSidebarCollapsed(v => !v)}
         />
         <main className="app-content" id="main-content" tabIndex={-1}>
           {children}
@@ -455,4 +571,3 @@ export function AppShell({
 
 // Re-export for use elsewhere
 export type { Lang };
-export { Info };

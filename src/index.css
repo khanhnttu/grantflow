@@ -164,7 +164,11 @@ body {
   transition: margin-left 0.25s cubic-bezier(0.4,0,0.2,1);
 }
 
-.app-main.full-width {
+/* Sidebar collapsed — slide sidebar out, reclaim space */
+.app-shell.sidebar-collapsed .app-sidebar {
+  transform: translateX(-100%);
+}
+.app-main.sidebar-collapsed {
   margin-left: 0;
 }
 
@@ -186,15 +190,30 @@ body {
 .app-content {
   flex: 1;
   padding: 24px;
-  max-width: 1280px;
   width: 100%;
+}
+
+/* Bare topbar (marketing pages) — no sidebar indent */
+.app-topbar--bare {
+  margin-left: 0 !important;
+  padding: 0 24px;
 }
 
 @media (max-width: 767px) {
   .app-sidebar { transform: translateX(-100%); }
   .app-sidebar.mobile-open { transform: translateX(0); }
   .app-main { margin-left: 0; }
-  .app-content { padding: 16px; }
+  .app-main.sidebar-collapsed { margin-left: 0; }
+  .app-content { padding: 12px; }
+  .app-topbar { padding: 0 12px; gap: 8px; }
+  .app-topbar--bare { padding: 0 12px; }
+}
+
+/* Very small screens (375px) — prevent topbar overflow */
+@media (max-width: 400px) {
+  .app-topbar { gap: 6px; padding: 0 8px; }
+  .app-topbar--bare { padding: 0 8px; }
+  .app-content { padding: 10px; }
 }
 
 /* ── Typography ──────────────────────────────────────────────────────────── */
