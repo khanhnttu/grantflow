@@ -185,7 +185,7 @@ export function TermsPage({ onNav: _onNav }: { onNav?: (p: string) => void }) {
         </p>
         <p>
           Security measures in place: OpenZeppelin SafeERC20, ReentrancyGuard, Ownable2Step, pull-claim
-          payout pattern, 89 automated Foundry tests. These measures reduce risk but do not eliminate it.
+          payout pattern, 157 automated Foundry tests (v3 and v4). These measures reduce risk but do not eliminate it.
         </p>
       </ProseSection>
 

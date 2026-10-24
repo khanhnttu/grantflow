@@ -146,9 +146,9 @@ export const KB: KbEntry[] = [
     titleEn: 'Is it safe?',
     titleVi: 'Có an toàn không?',
     answerEn:
-      'GrantFlow uses OpenZeppelin SafeERC20, ReentrancyGuard, and Ownable2Step. It has 89 Foundry tests including fuzz tests. Arc Studio ran automated security and functional reviews. The source is public on GitHub. It has NOT been audited by an independent third party. Use small amounts. GrantFlow never asks for your private key or seed phrase.',
+      'GrantFlow uses OpenZeppelin SafeERC20, ReentrancyGuard, and Ownable2Step. It has 157 Foundry tests (89 v3 + 68 v4) including fuzz tests. Arc Studio ran automated security and functional reviews. The source is public on GitHub. It has NOT been audited by an independent third party. Use small amounts. GrantFlow never asks for your private key or seed phrase.',
     answerVi:
-      'GrantFlow dùng OpenZeppelin SafeERC20, ReentrancyGuard và Ownable2Step. Có 89 bài kiểm tra Foundry gồm fuzz test. Arc Studio chạy đánh giá bảo mật tự động. Mã nguồn công khai trên GitHub. CHƯA được kiểm toán bởi bên thứ ba độc lập. Hãy dùng số tiền nhỏ. GrantFlow không bao giờ yêu cầu khóa riêng tư hay seed phrase.',
+      'GrantFlow dùng OpenZeppelin SafeERC20, ReentrancyGuard và Ownable2Step. Có 157 bài kiểm tra Foundry (89 v3 + 68 v4) bao gồm fuzz test. Arc Studio chạy đánh giá bảo mật tự động. Mã nguồn công khai trên GitHub. CHƯA được kiểm toán bởi bên thứ ba độc lập. Hãy dùng số tiền nhỏ. GrantFlow không bao giờ yêu cầu khóa riêng tư hay seed phrase.',
     navTarget: 'about',
     navLabelEn: 'Open About / Security',
     navLabelVi: 'Mở About / Bảo mật',

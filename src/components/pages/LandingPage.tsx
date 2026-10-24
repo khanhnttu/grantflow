@@ -142,7 +142,7 @@ export function LandingPage({ onNav }: LandingPageProps) {
           </span>
           <span className="flex items-center gap-1.5">
             <CheckCircle2 className="size-3.5" style={{ color: 'var(--success)' }} />
-            89 Foundry tests
+            157 Foundry tests (v3 + v4)
           </span>
           <span className="flex items-center gap-1.5">
             <CheckCircle2 className="size-3.5" style={{ color: 'var(--success)' }} />
@@ -390,7 +390,7 @@ export function LandingPage({ onNav }: LandingPageProps) {
             </h3>
             <div className="space-y-2">
               {[
-                '89 Foundry tests — happy paths, reverts, fuzz over fee parameters, and both program modes',
+                '157 Foundry tests (89 v3 + 68 v4) — happy paths, reverts, fuzz over fee math, both program modes, ranked prizes, and contest phases',
                 'Automated security review and functional review by Arc Studio on every contract change',
                 'OpenZeppelin SafeERC20 (safe transfer wrappers), ReentrancyGuard, and Ownable2Step',
                 'Pull-claim payout pattern — winners call claim() themselves; no push loop that can revert-lock',
