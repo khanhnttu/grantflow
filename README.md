@@ -10,7 +10,7 @@ Built with [Arc Studio](https://studio.arc.io)
 
 | | |
 |---|---|
-| **App** | [preeminent-lily-d87c8b.netlify.app](https://preeminent-lily-d87c8b.netlify.app) |
+| **App** | [grantflow-usdc.vercel.app](https://grantflow-usdc.vercel.app) |
 | **Contract** | `0x7c2866a62e6ad73e15e243d4341219eb3995fe7d` |
 | **Explorer** | [explorer.arc.io/address/0x7c2866...](https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d) |
 | **Deploy tx** | `0x15fa390fb616c79d891f8194618b5d9e56928402f920aa5bf21363d7ba596cc9` |
@@ -72,12 +72,20 @@ bun install
 
 ---
 
+## New in V4 (GrantFlowV4)
+
+GrantFlowV4 adds a full hackathon-contest flow with ranked prizes, two-phase deadlines (Submission then Judging), conflict-of-interest guards (sponsors/judges cannot submit), a judge vote budget per prize tier, and a pull-claim payout model.
+
+V4 Testnet: `0x8a8d4e2378842d02690e247c9241842a30bbf7c4` (Arc Testnet, 68/68 tests passing, both auditors: no material findings).
+
 ## Environment variables
 
 | Variable | Purpose | Required |
 |---|---|---|
-| `VITE_GRANTFLOW_ADDRESS` | GrantFlow contract address on Arc Testnet | Yes |
-| `VITE_GRANTFLOW_ADDRESS_MAINNET` | GrantFlow contract address on Arc Mainnet | Mainnet only |
+| `VITE_GRANTFLOW_ADDRESS` | GrantFlow v3 contract address on Arc Testnet | Yes |
+| `VITE_GRANTFLOW_ADDRESS_MAINNET` | GrantFlow v3 contract address on Arc Mainnet | Mainnet only |
+| `VITE_GRANTFLOW_V4_ADDRESS` | GrantFlowV4 contract address on Arc Testnet | Yes (defaults to deployed testnet address) |
+| `VITE_GRANTFLOW_V4_ADDRESS_MAINNET` | GrantFlowV4 contract address on Arc Mainnet | Mainnet only |
 | `VITE_CHAIN` | `testnet` (default) or `mainnet` | No |
 | `RPC_PROXY_BASE_URL` | Arc Studio RPC proxy base URL | Optional outside Arc Studio |
 | `RPC_PROXY_TOKEN` | Arc Studio RPC proxy auth token | Optional outside Arc Studio |
