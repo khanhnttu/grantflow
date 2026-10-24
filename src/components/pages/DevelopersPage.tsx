@@ -38,19 +38,24 @@ function CodeBlock({ code }: { code: string }) {
 interface ContractRow { label: string; address: string; explorer: string; }
 const CONTRACTS: ContractRow[] = [
   {
-    label: 'GrantFlowV3 — Arc Mainnet',
-    address: '0x7c2866a62e6ad73e15e243d4341219eb3995fe7d',
-    explorer: 'https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d',
+    label: 'GrantFlowV4 — Arc Mainnet ✦ active',
+    address: '0x41ffdab65fca60bda9beb455285d29ab753c3d2e',
+    explorer: 'https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e',
   },
   {
-    label: 'GrantFlowV3 — Arc Testnet',
-    address: '0x3805f86f71b47480a2b31d563ce1620b490a841f',
-    explorer: 'https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f',
+    label: 'GrantFlowV3 — Arc Mainnet (legacy)',
+    address: '0x7c2866a62e6ad73e15e243d4341219eb3995fe7d',
+    explorer: 'https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d',
   },
   {
     label: 'GrantFlowV4 — Arc Testnet',
     address: '0x8a8d4e2378842d02690e247c9241842a30bbf7c4',
     explorer: 'https://explorer.testnet.arc.io/address/0x8a8d4e2378842d02690e247c9241842a30bbf7c4',
+  },
+  {
+    label: 'GrantFlowV3 — Arc Testnet (legacy)',
+    address: '0x3805f86f71b47480a2b31d563ce1620b490a841f',
+    explorer: 'https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f',
   },
 ];
 
@@ -88,13 +93,14 @@ const READ_SNIPPET = `import { createPublicClient, http } from 'viem'
 import { defineChain } from 'viem'
 
 const arc = defineChain({
-  id: 5042002, // testnet; use 5042 for mainnet
-  name: 'Arc Testnet',
+  id: 5042,   // Arc Mainnet; use 5042002 for testnet
+  name: 'Arc',
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
-  rpcUrls: { default: { http: ['https://rpc.testnet.arc.io'] } },
+  rpcUrls: { default: { http: ['https://rpc.mainnet.arc.io'] } },
 })
 
-const V4_ADDRESS = '0x8a8d4e2378842d02690e247c9241842a30bbf7c4'
+// GrantFlowV4 — Arc Mainnet (deployed 2026-10-24)
+const V4_ADDRESS = '0x41ffdab65fca60bda9beb455285d29ab753c3d2e'
 
 const client = createPublicClient({ chain: arc, transport: http() })
 
@@ -133,6 +139,8 @@ const program = await client.readContract({
 console.log(program)`;
 
 const LISTEN_SNIPPET = `import { parseAbiItem } from 'viem'
+
+// V4_ADDRESS = '0x41ffdab65fca60bda9beb455285d29ab753c3d2e' (Arc Mainnet)
 
 // Listen for PrizeAssigned events (winners on finalize)
 const unwatch = client.watchContractEvent({

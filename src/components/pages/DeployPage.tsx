@@ -451,7 +451,10 @@ export function DeployPage({ onBack }: DeployPageProps) {
                 <pre
                   className="mt-1 rounded-lg px-3 py-2 text-xs font-mono overflow-x-auto"
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-                >{`VITE_GRANTFLOW_ADDRESS_MAINNET=${deployedAddress}`}</pre>
+                >{version === 'v4'
+                  ? `VITE_GRANTFLOW_V4_ADDRESS_MAINNET=${deployedAddress}`
+                  : `VITE_GRANTFLOW_ADDRESS_MAINNET=${deployedAddress}`
+                }</pre>
               </li>
               <li>
                 Set the active chain:

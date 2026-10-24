@@ -24,11 +24,20 @@ if (!usdcFact) throw new Error(`No USDC fact for chain ${ACTIVE_CHAIN_ID}`);
 export const USDC_ADDRESS = usdcFact.address as `0x${string}`;
 export const USDC_DECIMALS = usdcFact.decimals;
 
-/** GrantFlow contract address for the active chain. */
+/** GrantFlow V3 contract address for the active chain. */
 export const GRANTFLOW_ADDRESS = (() => {
   const raw: unknown = isMainnet
     ? import.meta.env.VITE_GRANTFLOW_ADDRESS_MAINNET
     : import.meta.env.VITE_GRANTFLOW_ADDRESS;
+  const addr = typeof raw === 'string' ? raw : '0x0000000000000000000000000000000000000000';
+  return addr as `0x${string}`;
+})();
+
+/** GrantFlow V4 contract address for the active chain. */
+export const GRANTFLOW_V4_ADDRESS = (() => {
+  const raw: unknown = isMainnet
+    ? import.meta.env.VITE_GRANTFLOW_V4_ADDRESS_MAINNET
+    : import.meta.env.VITE_GRANTFLOW_V4_ADDRESS;
   const addr = typeof raw === 'string' ? raw : '0x0000000000000000000000000000000000000000';
   return addr as `0x${string}`;
 })();

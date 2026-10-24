@@ -85,7 +85,7 @@ export function AppFooter({ onNav }: FooterProps) {
               <FooterLink page="developers"     onNav={onNav}>{t('nav.developers')}</FooterLink>
               <FooterLink href="https://github.com/khanhnttu/grantflow" onNav={onNav}>{t('footer.source')}</FooterLink>
               <FooterLink page="built-vs-planned" onNav={onNav}>{t('nav.builtVsPlanned')}</FooterLink>
-              <FooterLink href="https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d" onNav={onNav}>{t('footer.explorer')}</FooterLink>
+              <FooterLink href="https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e" onNav={onNav}>{t('footer.explorer')}</FooterLink>
             </nav>
           </div>
 

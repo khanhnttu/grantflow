@@ -11,11 +11,11 @@ Built with [Arc Studio](https://studio.arc.io)
 | | |
 |---|---|
 | **App** | [grantflow-usdc.vercel.app](https://grantflow-usdc.vercel.app) |
-| **Contract** | `0x7c2866a62e6ad73e15e243d4341219eb3995fe7d` |
-| **Explorer** | [explorer.arc.io/address/0x7c2866...](https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d) |
-| **Deploy tx** | `0x15fa390fb616c79d891f8194618b5d9e56928402f920aa5bf21363d7ba596cc9` |
+| **GrantFlowV4** | `0x41ffdab65fca60bda9beb455285d29ab753c3d2e` ([explorer](https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e)) |
+| **V4 deploy tx** | `0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617` |
+| **GrantFlowV3** | `0x7c2866a62e6ad73e15e243d4341219eb3995fe7d` ([explorer](https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d)) (legacy) |
 | **Chain** | Arc Mainnet (chain ID 5042) |
-| **Constructor** | USDC `0x3600...0000`, feeBps 100 (1%), feeRecipient = deployer wallet |
+| **Constructor** | USDC `0x3600...0000`, feeBps 100 (1%), feeRecipient `0x62628A9BB100D15494D00f6C76c22C975bBB7195` |
 
 ---
 
@@ -48,12 +48,13 @@ The contract owner (Ownable2Step) can update the fee rate and recipient on-chain
 
 | Contract | Chain | Address | Explorer |
 |---|---|---|---|
-| GrantFlow v3 (current) | Arc **Mainnet** | `0x7c2866a62e6ad73e15e243d4341219eb3995fe7d` | [View](https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d) |
-| GrantFlow v3 (testnet) | Arc Testnet | `0x3805f86f71b47480a2b31d563ce1620b490a841f` | [View](https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f) |
-| GrantFlow v2 (deprecated) | Arc Testnet | `0x541e15b5a1fe75534ff355d677a5ab7428bc1e93` | [View](https://explorer.testnet.arc.io/address/0x541e15b5a1fe75534ff355d677a5ab7428bc1e93) |
+| GrantFlowV4 (**active**) | Arc Mainnet | `0x41ffdab65fca60bda9beb455285d29ab753c3d2e` | [View](https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e) |
+| GrantFlowV4 (testnet) | Arc Testnet | `0x8a8d4e2378842d02690e247c9241842a30bbf7c4` | [View](https://explorer.testnet.arc.io/address/0x8a8d4e2378842d02690e247c9241842a30bbf7c4) |
+| GrantFlowV3 (legacy) | Arc Mainnet | `0x7c2866a62e6ad73e15e243d4341219eb3995fe7d` | [View](https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d) |
+| GrantFlowV3 (testnet legacy) | Arc Testnet | `0x3805f86f71b47480a2b31d563ce1620b490a841f` | [View](https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f) |
 
-Mainnet constructor args: `usdc=0x3600000000000000000000000000000000000000`, `feeRecipient=0x62628A9BB100D15494D00f6C76c22C975bBB7195`, `feeBps=100`
-Mainnet deploy tx: `0x15fa390fb616c79d891f8194618b5d9e56928402f920aa5bf21363d7ba596cc9`
+V4 Mainnet deploy tx: `0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617`
+V4 constructor args: `usdc=0x3600000000000000000000000000000000000000`, `feeRecipient=0x62628A9BB100D15494D00f6C76c22C975bBB7195`, `feeBps=100`
 
 ---
 
@@ -76,7 +77,8 @@ bun install
 
 GrantFlowV4 adds a full hackathon-contest flow with ranked prizes, two-phase deadlines (Submission then Judging), conflict-of-interest guards (sponsors/judges cannot submit), a judge vote budget per prize tier, and a pull-claim payout model.
 
-V4 Testnet: `0x8a8d4e2378842d02690e247c9241842a30bbf7c4` (Arc Testnet, 68/68 tests passing, both auditors: no material findings).
+V4 Mainnet: `0x41ffdab65fca60bda9beb455285d29ab753c3d2e` (Arc Mainnet, deploy tx `0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617`).
+V4 Testnet: `0x8a8d4e2378842d02690e247c9241842a30bbf7c4` (68/68 Foundry tests passing, both auditors: no material findings).
 
 ## Environment variables
 
