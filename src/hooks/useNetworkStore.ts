@@ -38,14 +38,18 @@ export interface NetworkConfig {
   usdcAddress: `0x${string}`;
   usdcDecimals: number;
   nativeDecimals: number;
-  v4Address: `0x${string}`;
-  v3Address: `0x${string}`;
+  v5Address: `0x${string}`;  // GrantFlowV5 — auto-payout push model
+  v4Address: `0x${string}`;  // GrantFlowV4 — legacy pull-claim
+  v3Address: `0x${string}`;  // GrantFlow v3 — legacy
 }
 
+const MAINNET_V5 = (import.meta.env.VITE_GRANTFLOW_V5_ADDRESS_MAINNET || '') as `0x${string}`;
 const MAINNET_V4 = (import.meta.env.VITE_GRANTFLOW_V4_ADDRESS_MAINNET ||
   '0x41ffdab65fca60bda9beb455285d29ab753c3d2e') as `0x${string}`;
 const MAINNET_V3 = (import.meta.env.VITE_GRANTFLOW_ADDRESS_MAINNET ||
   '0x7c2866a62e6ad73e15e243d4341219eb3995fe7d') as `0x${string}`;
+const TESTNET_V5 = (import.meta.env.VITE_GRANTFLOW_V5_ADDRESS ||
+  '0x23d26fb2661497c1e658e8d717df8a7dea2f62c0') as `0x${string}`;
 const TESTNET_V4 = (import.meta.env.VITE_GRANTFLOW_V4_ADDRESS ||
   '0x0754d3359f18be2079c6d3cea29658b464cfe946') as `0x${string}`;
 const TESTNET_V3 = (import.meta.env.VITE_GRANTFLOW_ADDRESS ||
@@ -64,6 +68,7 @@ export const NETWORK_CONFIGS: Record<NetworkChoice, NetworkConfig> = {
     usdcAddress:    USDC,
     usdcDecimals:   6,
     nativeDecimals: 18,
+    v5Address:      MAINNET_V5,
     v4Address:      MAINNET_V4,
     v3Address:      MAINNET_V3,
   },
@@ -77,6 +82,7 @@ export const NETWORK_CONFIGS: Record<NetworkChoice, NetworkConfig> = {
     usdcAddress:    USDC,
     usdcDecimals:   6,
     nativeDecimals: 18,
+    v5Address:      TESTNET_V5,
     v4Address:      TESTNET_V4,
     v3Address:      TESTNET_V3,
   },

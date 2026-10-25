@@ -24,6 +24,8 @@ import { GRANTFLOW_DEPLOY_ABI } from '@/lib/grantflowDeploy';
 import { GRANTFLOW_BYTECODE } from '@/lib/grantflowBytecode';
 import { GRANTFLOW_V4_BYTECODE } from '@/lib/grantflowV4Bytecode';
 import { GRANTFLOW_V4_ABI } from '@/lib/grantflowV4';
+import { GRANTFLOW_V5_BYTECODE } from '@/lib/grantflowV5Bytecode';
+import { GRANTFLOW_V5_DEPLOY_ABI } from '@/lib/grantflowV5';
 import { arcMainnet } from '@/config';
 import { requireChain } from '@/onchain-facts';
 import { cn } from '@/lib/utils';
@@ -36,7 +38,7 @@ const ARC_MAINNET_EXPLORER = ARC_MAINNET.explorerBase;
 const DEFAULT_FEE_BPS = 100; // 1%
 
 type Step = 'form' | 'confirm' | 'deploying' | 'done' | 'error';
-type ContractVersion = 'v3' | 'v4';
+type ContractVersion = 'v3' | 'v4' | 'v5';
 
 interface DeployPageProps {
   onBack?: () => void;
@@ -47,7 +49,7 @@ export function DeployPage({ onBack }: DeployPageProps) {
   const { address: connectedAddress, chainId } = useAccount();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
 
-  const [version, setVersion] = useState<ContractVersion>('v4');
+  const [version, setVersion] = useState<ContractVersion>('v5');
   const [step, setStep] = useState<Step>('form');
   const [feeRecipientOverride, setFeeRecipientOverride] = useState<string>('');
   const [feeBpsInput, setFeeBpsInput] = useState<string>(String(DEFAULT_FEE_BPS));
@@ -79,8 +81,12 @@ export function DeployPage({ onBack }: DeployPageProps) {
   // Promote step to 'done' once receipt arrives — derive via render, not effect
   const effectiveStep: Step = isDone ? 'done' : step;
 
-  const activeAbi = version === 'v4' ? GRANTFLOW_V4_ABI : GRANTFLOW_DEPLOY_ABI;
-  const activeBytecode = version === 'v4' ? GRANTFLOW_V4_BYTECODE : GRANTFLOW_BYTECODE;
+  const activeAbi = version === 'v5' ? GRANTFLOW_V5_DEPLOY_ABI
+    : version === 'v4' ? GRANTFLOW_V4_ABI
+    : GRANTFLOW_DEPLOY_ABI;
+  const activeBytecode = version === 'v5' ? GRANTFLOW_V5_BYTECODE
+    : version === 'v4' ? GRANTFLOW_V4_BYTECODE
+    : GRANTFLOW_BYTECODE;
 
   const handleDeploy = () => {
     if (!formValid) return;
@@ -150,15 +156,17 @@ export function DeployPage({ onBack }: DeployPageProps) {
           from your browser wallet to Arc Mainnet.
         </p>
         {/* Version switcher */}
-        <div className="flex gap-2">
-          {(['v4', 'v3'] as ContractVersion[]).map(v => (
+        <div className="flex gap-2 flex-wrap">
+          {(['v5', 'v4', 'v3'] as ContractVersion[]).map(v => (
             <button key={v} onClick={() => { setVersion(v); setStep('form'); setConfirmed(false); }}
               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
               style={version === v
                 ? { background: 'var(--accent)', color: '#fff' }
                 : { background: 'var(--surface-muted)', border: '1px solid var(--border)', color: 'var(--ink-2)' }
               }>
-              {v === 'v4' ? 'GrantFlowV4 (ranked prizes)' : 'GrantFlow v3 (legacy)'}
+              {v === 'v5' ? 'GrantFlowV5 ✦ team split, push payout'
+                : v === 'v4' ? 'GrantFlowV4 (pull claim)'
+                : 'GrantFlow v3 (legacy)'}
             </button>
           ))}
         </div>
@@ -453,7 +461,9 @@ export function DeployPage({ onBack }: DeployPageProps) {
                 <pre
                   className="mt-1 rounded-lg px-3 py-2 text-xs font-mono overflow-x-auto"
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-                >{version === 'v4'
+                >{version === 'v5'
+                  ? `VITE_GRANTFLOW_V5_ADDRESS_MAINNET=${deployedAddress}`
+                  : version === 'v4'
                   ? `VITE_GRANTFLOW_V4_ADDRESS_MAINNET=${deployedAddress}`
                   : `VITE_GRANTFLOW_ADDRESS_MAINNET=${deployedAddress}`
                 }</pre>

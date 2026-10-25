@@ -14,6 +14,8 @@ import {
   ArrowLeft, ExternalLink, RefreshCw, CheckCircle2, AlertTriangle,
   Share2, Copy, Trophy,
 } from 'lucide-react';
+import { ResultsTab } from '@/components/pages/v5/ResultsTab';
+import { buildProgramUrl } from '@/hooks/useGrantFlowV5';
 import { useAccount } from 'wagmi';
 import {
   useProgramV4, useProgramJudges, useSubmissionCountV4,
@@ -49,7 +51,7 @@ const RANK_BG = [
 
 interface Props { programId: number; onBack: () => void; }
 
-type TabId = 'winners' | 'details' | 'submissions' | 'participants' | 'judges' | 'ask';
+type TabId = 'winners' | 'results' | 'details' | 'submissions' | 'participants' | 'judges' | 'ask';
 
 interface SubRow {
   id: number;
@@ -155,6 +157,7 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
   // ── Tab definitions ───────────────────────────────────────────────────────────
   const TABS: { id: TabId; label: string }[] = [
     ...(finalized ? [{ id: 'winners' as TabId, label: 'Winners' }] : []),
+    ...(finalized ? [{ id: 'results' as TabId, label: t('results.tab') }] : []),
     { id: 'details',      label: t('tab.details')                         },
     { id: 'submissions',  label: `Submissions (${subCount})`       },
     { id: 'participants', label: `${t('tab.participants')} (${participants.length})` },
@@ -166,9 +169,9 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
+  const programShareUrl = buildProgramUrl(config.name, programId, 'v4');
   const shareResults = () => {
-    const url = `${window.location.origin}${window.location.pathname}#v4-program/${programId}`;
-    void navigator.clipboard.writeText(url).then(() => {
+    void navigator.clipboard.writeText(programShareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -753,6 +756,16 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
 
       {/* Tab content */}
       {effectiveTab === 'winners'      && renderWinnersTab()}
+      {effectiveTab === 'results'      && (
+        <ResultsTab
+          programId={programId}
+          programName={prog ? (prog[0]) : ''}
+          contractVersion="v4"
+          onFinalize={!finalized ? (() => void handleFinalize()) : undefined}
+          finalizeBusy={busy}
+          disableTx={disableTx}
+        />
+      )}
       {effectiveTab === 'details'      && renderDetailsTab()}
       {effectiveTab === 'submissions'  && renderSubmissionsTab()}
       {effectiveTab === 'participants' && renderParticipantsTab()}

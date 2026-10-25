@@ -3,8 +3,8 @@
  * Pagination (20/page), sort (newest / ending soon / biggest pool).
  * Fully readable without a wallet.
  */
-import { useState, useMemo } from 'react';
-import { LayoutGrid, List, RefreshCw, Trophy, ChevronLeft, ChevronRight as ChevronR, AlertCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { LayoutGrid, List, RefreshCw, Trophy, ChevronLeft, ChevronRight as ChevronR, AlertCircle, ChevronDown, ChevronUp, ExternalLink, Zap } from 'lucide-react';
 import { LogoMark } from '@/components/BrandLogo';
 import { useProgramCount, useAllProgramsV4 } from '@/hooks/useGrantFlowV4';
 import { useProgramCount as useV3Count } from '@/hooks/useGrantFlow';
@@ -19,6 +19,8 @@ import {
 } from '@/lib/grantflowV4';
 import { useI18n } from '@/hooks/useI18n';
 import type { StringKey } from '@/lib/i18n';
+import { useV5ProgramCount, GRANTFLOW_V5_ABI, parseSponsorMeta } from '@/hooks/useGrantFlowV5';
+import { formatUnits } from 'viem';
 
 const PAGE_SIZE = 20;
 // Module-level snapshot of "now" — used in LegacyV3Section to classify ended programs.
@@ -39,6 +41,8 @@ const CAT_ALL = 99 as const;
 interface Props {
   search: string;
   onSelect: (id: number) => void;
+  /** Called when user clicks a V5 program (navigate to v5-program page) */
+  onSelectV5?: (id: number) => void;
 }
 
 interface ProgramRow {
@@ -48,7 +52,7 @@ interface ProgramRow {
   phase: PhaseValue; finalized: boolean; cancelled: boolean;
 }
 
-export function ExploreV4({ search, onSelect }: Props) {
+export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
   const [tab, setTab]     = useState<PhaseValue | 'all'>('all');
   const [cat, setCat]     = useState<number>(CAT_ALL);
   const [grid, setGrid]   = useState(false);
@@ -108,12 +112,15 @@ export function ExploreV4({ search, onSelect }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* V5 programs section — shown when V5 contract is deployed */}
+      <V5ProgramsSection search={search} onSelectV5={onSelectV5 ?? onSelect} />
+
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>{t('explore.title')}</h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            {count} program{count !== 1 ? 's' : ''} · GrantFlowV4
+            {count} program{count !== 1 ? 's' : ''} · GrantFlowV4 ({t('explore.legacyNote')})
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -461,6 +468,155 @@ function LegacyV3Section({ explorer }: { explorer: string }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── V5 Programs Section ────────────────────────────────────────────────────────
+
+interface V5ProgCard {
+  id: number;
+  name: string;
+  sponsorName: string;
+  logo: string;
+  pool: string;
+  prizeCount: number;
+  subDl: number;
+  phase: PhaseValue;
+  finalized: boolean;
+  cancelled: boolean;
+}
+
+function V5ProgramsSection({ search, onSelectV5 }: { search: string; onSelectV5: (id: number) => void }) {
+  const { config, appClient } = useNetworkStore();
+  const { count } = useV5ProgramCount();
+  const [cards, setCards] = useState<V5ProgCard[]>([]);
+  const [loadingV5, setLoadingV5] = useState(false);
+
+  const loadV5 = useCallback(async () => {
+    if (!config.v5Address || !count) { setCards([]); return; }
+    setLoadingV5(true);
+    try {
+      const results = await Promise.all(
+        Array.from({ length: count }, (_, i) =>
+          appClient.readContract({
+            address: config.v5Address,
+            abi: GRANTFLOW_V5_ABI,
+            functionName: 'getProgram',
+            args: [BigInt(i)],
+          }).catch(() => null)
+        )
+      );
+      const parsed: V5ProgCard[] = [];
+      results.forEach((r, i) => {
+        if (!r) return;
+        const [name, description, , prizes, totalDeposited, subDl, judDl, , , , finalized, cancelled] =
+          r as readonly [string, string, `0x${string}`, readonly bigint[], bigint, bigint, bigint, number, number, boolean, boolean, boolean];
+        const meta = parseSponsorMeta(description);
+        const phase = computePhase(subDl, judDl, finalized, cancelled);
+        parsed.push({
+          id: i, name,
+          sponsorName: meta.sponsorName,
+          logo: meta.logo,
+          pool: formatUnits(totalDeposited, config.usdcDecimals),
+          prizeCount: prizes.length,
+          subDl: Number(subDl),
+          phase,
+          finalized,
+          cancelled,
+        });
+      });
+      setCards(parsed.reverse()); // newest first
+    } finally {
+      setLoadingV5(false);
+    }
+  }, [config, appClient, count]);
+
+  // eslint-disable-next-line react-compiler/react-compiler
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => { if (!cancelled) await loadV5(); };
+    void run();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadV5]);
+
+  if (!config.v5Address || count === 0) return null;
+
+  const filtered = cards.filter(c =>
+    !search || c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-3">
+      {/* Section header */}
+      <div className="flex items-center gap-2">
+        <Zap size={14} style={{ color: 'var(--accent)' }} />
+        <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+          New Programs
+        </span>
+        <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+          style={{ background: 'var(--accent)', color: '#fff' }}>V5</span>
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          · auto-payout · {count} program{count !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      {loadingV5 ? (
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          {[1,2,3].map(i => (
+            <div key={i} className="flex-shrink-0 w-52 h-28 rounded-2xl animate-pulse"
+              style={{ background: 'var(--surface)' }} />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <p className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>No V5 programs yet.</p>
+      ) : (
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map(c => (
+            <article key={c.id}
+              onClick={() => onSelectV5(c.id)}
+              onKeyDown={e => e.key === 'Enter' && onSelectV5(c.id)}
+              tabIndex={0}
+              role="button"
+              aria-label={`Open V5 program: ${c.name}`}
+              className="rounded-2xl p-4 cursor-pointer transition-all hover:scale-[1.01] focus-visible:outline-2"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                {c.logo ? (
+                  <img src={c.logo} alt={c.sponsorName || 'Sponsor'}
+                    className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                    onError={e => { (e.currentTarget).style.display = 'none'; }} />
+                ) : (
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                    style={{ background: 'var(--accent)', color: '#fff' }}>
+                    {c.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <span className="font-semibold text-sm truncate flex-1" style={{ color: 'var(--text)' }}>
+                  {c.name}
+                </span>
+                <PhasePill phase={c.phase} />
+              </div>
+              <div className="text-xl font-bold tabular-nums" style={{ color: 'var(--accent)' }}>
+                {c.pool} <span className="text-xs font-normal">USDC</span>
+              </div>
+              <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                <span>{c.prizeCount} prize{c.prizeCount !== 1 ? 's' : ''}</span>
+                <span aria-hidden>·</span>
+                <span>Sub: {new Date(c.subDl * 1000).toLocaleDateString()}</span>
+              </div>
+              {c.sponsorName && (
+                <p className="text-xs mt-1 truncate" style={{ color: 'var(--text-muted)' }}>{c.sponsorName}</p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+
+      {/* Divider before V4 section */}
+      <div className="h-px mt-2" style={{ background: 'var(--border)' }} />
     </div>
   );
 }

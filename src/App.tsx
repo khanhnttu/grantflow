@@ -5,7 +5,7 @@ import { HelpAssistant } from '@/components/HelpAssistant';
 import { WrongNetworkBanner, WrongNetworkProvider } from '@/components/NetworkUI';
 import { RoleProvider } from '@/components/RoleSwitcher';
 import { I18nProvider } from '@/hooks/useI18n';
-import { NetworkStoreProvider } from '@/hooks/useNetworkStore';
+import { NetworkStoreProvider, useNetworkStore } from '@/hooks/useNetworkStore';
 import { AppFooter } from '@/components/AppFooter';
 import { AppSlimFooter } from '@/components/AppSlimFooter';
 import { LandingPage } from '@/components/pages/LandingPage';
@@ -18,6 +18,7 @@ import { AboutPage, DocsPage, TermsPage } from '@/components/pages/InfoPages';
 import { DeployPage } from '@/components/pages/DeployPage';
 import { ExploreV4 } from '@/components/pages/v4/ExploreV4';
 import { ProgramDetailV4 } from '@/components/pages/v4/ProgramDetailV4';
+import { ProgramDetailV5 } from '@/components/pages/v5/ProgramDetailV5';
 import { CreateProgramV4 } from '@/components/pages/v4/CreateProgramV4';
 import { MySubmissionsV4 } from '@/components/pages/v4/MySubmissionsV4';
 import { MyProgramsV4 } from '@/components/pages/v4/MyProgramsV4';
@@ -25,6 +26,8 @@ import { HowItWorksPage } from '@/components/pages/HowItWorksPage';
 import { ComparePage } from '@/components/pages/ComparePage';
 import { DevelopersPage } from '@/components/pages/DevelopersPage';
 import { BuiltVsPlannedPage } from '@/components/pages/BuiltVsPlannedPage';
+
+import { parseProgramPath } from '@/hooks/useGrantFlowV5';
 
 // ── Marketing pages: full-width without sidebar, big footer ──────────────────
 // These render outside the app shell, with a full-width layout.
@@ -53,7 +56,27 @@ const PAGE_TITLES: Partial<Record<AppPage, string>> = {
   deploy:             'Deploy Contract · GrantFlow',
 };
 
-function parseHash(): { page: AppPage; programId?: number } {
+type RouteState = {
+  page: AppPage;
+  programId?: number;
+  programVersion?: 'v5' | 'v4';
+  programNetwork?: 'mainnet' | 'testnet';
+};
+
+function parseRoute(): RouteState {
+  // First: handle clean path routes like /p/v5-mainnet/3
+  const path = window.location.pathname;
+  const pathResult = parseProgramPath(path);
+  if (pathResult) {
+    return {
+      page:           pathResult.version === 'v5' ? 'v5-program' : 'v4-program',
+      programId:      pathResult.programId,
+      programVersion: pathResult.version,
+      programNetwork: pathResult.chain,
+    };
+  }
+
+  // Fallback: legacy hash routing
   const hash = window.location.hash.replace('#', '').replace(/^\//, '');
   if (!hash || hash === '/') return { page: 'landing' };
   if (hash.startsWith('program/')) {
@@ -64,9 +87,14 @@ function parseHash(): { page: AppPage; programId?: number } {
     const id = parseInt(hash.split('/')[1], 10);
     return { page: 'v4-program', programId: isNaN(id) ? 0 : id };
   }
+  if (hash.startsWith('v5-program/')) {
+    const id = parseInt(hash.split('/')[1], 10);
+    return { page: 'v5-program', programId: isNaN(id) ? 0 : id };
+  }
   const valid: AppPage[] = [
     'explore', 'sponsor', 'builder', 'reviewer', 'about', 'docs', 'terms', 'deploy', 'landing',
     'v4-explore', 'v4-create', 'v4-submissions', 'v4-my-programs',
+    'v5-explore', 'v5-create', 'v5-program',
     'how-it-works', 'compare', 'developers', 'built-vs-planned',
   ];
   return valid.includes(hash as AppPage)
@@ -74,8 +102,21 @@ function parseHash(): { page: AppPage; programId?: number } {
     : { page: 'v4-explore' };
 }
 
-export default function App() {
-  const [{ page, programId }, setRoute] = useState<{ page: AppPage; programId?: number }>(parseHash);
+function AppInner() {
+  const [{ page, programId, programNetwork }, setRoute] =
+    useState<RouteState>(parseRoute);
+  const { config, setNetwork } = useNetworkStore();
+
+  // When a shareable URL encodes a specific chain (e.g. /p/v5-testnet/3),
+  // switch the global network store to that chain so writes, the footer,
+  // and the network dropdown all stay consistent.
+  useEffect(() => {
+    if (programNetwork && programNetwork !== config.name) {
+      setNetwork(programNetwork);
+    }
+  // Run only when the programNetwork from the URL changes, not on every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programNetwork]);
   const [theme, setTheme] = useState<ThemeMode>(() => {
     try {
       const saved = localStorage.getItem('gf-theme');
@@ -90,11 +131,15 @@ export default function App() {
     try { localStorage.setItem('gf-theme', theme); } catch {}
   }, [theme]);
 
-  // Hash-based routing
+  // Hash/path-based routing — listen to both hashchange and popstate
   useEffect(() => {
-    const handler = () => setRoute(parseHash());
+    const handler = () => setRoute(parseRoute());
     window.addEventListener('hashchange', handler);
-    return () => window.removeEventListener('hashchange', handler);
+    window.addEventListener('popstate', handler);
+    return () => {
+      window.removeEventListener('hashchange', handler);
+      window.removeEventListener('popstate', handler);
+    };
   }, []);
 
   // Per-page document titles
@@ -109,12 +154,20 @@ export default function App() {
   const navigate = (p: AppPage, id?: number) => {
     if (p === 'program' && id !== undefined) {
       window.location.hash = `program/${id}`;
+      setRoute({ page: p, programId: id });
     } else if (p === 'v4-program' && id !== undefined) {
       window.location.hash = `v4-program/${id}`;
+      setRoute({ page: p, programId: id });
+    } else if (p === 'v5-program' && id !== undefined) {
+      // Use clean path URL for V5 programs
+      const chain = config.name; // use current active network
+      const path = `/p/v5-${chain}/${id}`;
+      window.history.pushState({}, '', path);
+      setRoute({ page: p, programId: id, programVersion: 'v5', programNetwork: chain });
     } else {
       window.location.hash = p === 'landing' ? '/' : p;
+      setRoute({ page: p, programId: id });
     }
-    setRoute({ page: p, programId: id });
   };
 
   const isMarketing = MARKETING_PAGES.includes(page);
@@ -126,7 +179,7 @@ export default function App() {
 
       // ── V4 app pages ──
       case 'v4-explore':
-        return <ExploreV4 search={search} onSelect={id => navigate('v4-program', id)} />;
+        return <ExploreV4 search={search} onSelect={id => navigate('v4-program', id)} onSelectV5={id => navigate('v5-program', id)} />;
       case 'v4-program':
         return <ProgramDetailV4 programId={programId ?? 0} onBack={() => navigate('v4-explore')} />;
       case 'v4-create':
@@ -135,6 +188,20 @@ export default function App() {
         return <MySubmissionsV4 onSelect={id => navigate('v4-program', id)} />;
       case 'v4-my-programs':
         return <MyProgramsV4 onSelect={id => navigate('v4-program', id)} onCreateNew={() => navigate('v4-create')} />;
+
+      // ── V5 app pages ──
+      case 'v5-explore':
+        return <ExploreV4 search={search} onSelect={id => navigate('v4-program', id)} onSelectV5={id => navigate('v5-program', id)} />;
+      case 'v5-create':
+        return <CreateProgramV4 onDone={() => navigate('v5-explore')} />;
+      case 'v5-program':
+        return (
+          <ProgramDetailV5
+            programId={programId ?? 0}
+            onBack={() => navigate('v5-explore')}
+            programNetwork={programNetwork}
+          />
+        );
 
       // ── Marketing / info pages ──
       case 'how-it-works':
@@ -168,45 +235,51 @@ export default function App() {
         return <DeployPage />;
 
       default:
-        return <ExploreV4 search={search} onSelect={id => navigate('v4-program', id)} />;
+        return <ExploreV4 search={search} onSelect={id => navigate('v4-program', id)} onSelectV5={id => navigate('v5-program', id)} />;
     }
   };
 
   return (
-    <NetworkStoreProvider>
-      <I18nProvider>
-        <RoleProvider>
-          <WrongNetworkProvider>
-            <AppShell
-              page={page}
-              onNav={navigate}
-              theme={theme}
-              onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
-              search={search}
-              onSearch={setSearch}
-              bare={isMarketing}
-            >
-              {/* Wrong-network banner — only on app pages, not marketing */}
-              {!isMarketing && <WrongNetworkBanner />}
+    <I18nProvider>
+      <RoleProvider>
+        <WrongNetworkProvider>
+          <AppShell
+            page={page}
+            onNav={navigate}
+            theme={theme}
+            onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+            search={search}
+            onSearch={setSearch}
+            bare={isMarketing}
+          >
+            {/* Wrong-network banner — only on app pages, not marketing */}
+            {!isMarketing && <WrongNetworkBanner />}
 
-              {renderPage()}
+            {renderPage()}
 
-              {/* Slim footer inside app shell (non-marketing pages only) */}
-              {!isMarketing && <AppSlimFooter />}
+            {/* Slim footer inside app shell (non-marketing pages only) */}
+            {!isMarketing && <AppSlimFooter />}
 
-              {/* Big footer appended after marketing page content, full-width */}
-              {isMarketing && page !== 'landing' && (
-                <AppFooter onNav={navigate} />
-              )}
-            </AppShell>
-
-            {/* Help assistant — not shown on deploy page */}
-            {page !== 'deploy' && (
-              <HelpAssistant onNav={p => navigate(p as AppPage)} />
+            {/* Big footer appended after marketing page content, full-width */}
+            {isMarketing && page !== 'landing' && (
+              <AppFooter onNav={navigate} />
             )}
-          </WrongNetworkProvider>
-        </RoleProvider>
-      </I18nProvider>
+          </AppShell>
+
+          {/* Help assistant — not shown on deploy page */}
+          {page !== 'deploy' && (
+            <HelpAssistant onNav={p => navigate(p as AppPage)} />
+          )}
+        </WrongNetworkProvider>
+      </RoleProvider>
+    </I18nProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <NetworkStoreProvider>
+      <AppInner />
     </NetworkStoreProvider>
   );
 }

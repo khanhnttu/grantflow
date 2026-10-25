@@ -1,0 +1,770 @@
+/**
+ * useGrantFlowV5 — hooks for GrantFlowV5 (auto-payout push model).
+ *
+ * Key differences from V4:
+ *  - finalize() pushes prizes directly to winners (no pendingClaims).
+ *  - finalize() auto-refunds sponsor residual in the same tx.
+ *  - No claim() / reclaim() calls needed.
+ *  - updateProgram() for sponsor edits before first submission.
+ *  - description stores JSON: {"desc":"...","sponsorName":"...","website":"...","logo":"..."}
+ *    Old plain-text descriptions are still displayed as-is.
+ */
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useAccount, useWriteContract } from 'wagmi';
+import { parseUnits, formatUnits, type Hash, type PublicClient } from 'viem';
+import { useNetworkStore } from './useNetworkStore';
+import { isAlreadyInFlight } from './useTxRecovery';
+
+// ── ABI ───────────────────────────────────────────────────────────────────────
+
+export const GRANTFLOW_V5_ABI = [
+  // State reads
+  { name: 'programCount',       type: 'function', stateMutability: 'view',
+    inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'feeBps',             type: 'function', stateMutability: 'view',
+    inputs: [], outputs: [{ type: 'uint256' }] },
+  { name: 'feeRecipient',       type: 'function', stateMutability: 'view',
+    inputs: [], outputs: [{ type: 'address' }] },
+  { name: 'hasSubmitted',       type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }, { type: 'address' }], outputs: [{ type: 'bool' }] },
+  { name: 'hasVotedOn',         type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }, { type: 'address' }, { type: 'uint256' }],
+    outputs: [{ type: 'bool' }] },
+  { name: 'votesCast',          type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }, { type: 'address' }], outputs: [{ type: 'uint256' }] },
+
+  // Program reads
+  { name: 'getProgram', type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }],
+    outputs: [
+      { name: 'name',               type: 'string'    },
+      { name: 'description',        type: 'string'    },
+      { name: 'sponsor',            type: 'address'   },
+      { name: 'prizes',             type: 'uint256[]' },
+      { name: 'totalDeposited',     type: 'uint256'   },
+      { name: 'submissionDeadline', type: 'uint256'   },
+      { name: 'judgingDeadline',    type: 'uint256'   },
+      { name: 'programType',        type: 'uint8'     },
+      { name: 'category',           type: 'uint8'     },
+      { name: 'exists',             type: 'bool'      },
+      { name: 'finalized',          type: 'bool'      },
+      { name: 'cancelled',          type: 'bool'      },
+    ]},
+  { name: 'getJudges',          type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }], outputs: [{ type: 'address[]' }] },
+  { name: 'submissionCount',    type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }], outputs: [{ type: 'uint256' }] },
+  { name: 'getSubmission',      type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }, { type: 'uint256' }],
+    outputs: [
+      { name: 'submitter',        type: 'address' },
+      { name: 'projectContract',  type: 'address' },
+      { name: 'metadataURI',      type: 'string'  },
+      { name: 'votes',            type: 'uint256' },
+      { name: 'prizeAwarded',     type: 'uint256' },
+      { name: 'paid',             type: 'bool'    },  // always true after finalize in V5
+    ]},
+  { name: 'getPhase',           type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }], outputs: [{ type: 'uint8' }] },
+  { name: 'isJudge',            type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }, { type: 'address' }], outputs: [{ type: 'bool' }] },
+  { name: 'votesRemaining',     type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }, { type: 'address' }], outputs: [{ type: 'uint256' }] },
+
+  // Writes
+  { name: 'createProgram', type: 'function', stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'name_',               type: 'string'    },
+      { name: 'description_',        type: 'string'    },
+      { name: 'prizes_',             type: 'uint256[]' },
+      { name: 'submissionDeadline_', type: 'uint256'   },
+      { name: 'judgingDeadline_',    type: 'uint256'   },
+      { name: 'judges_',             type: 'address[]' },
+      { name: 'programType_',        type: 'uint8'     },
+      { name: 'category_',           type: 'uint8'     },
+    ],
+    outputs: [{ type: 'uint256' }]},
+  { name: 'submit', type: 'function', stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'programId',        type: 'uint256'   },
+      { name: 'projectContract',  type: 'address'   },
+      { name: 'metadataURI',      type: 'string'    },
+      { name: 'payees_',          type: 'address[]' },
+      { name: 'sharesBps_',       type: 'uint256[]' },
+    ], outputs: [] },
+  { name: 'getSubmissionTeam', type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'uint256' }, { type: 'uint256' }],
+    outputs: [
+      { name: 'payees_',    type: 'address[]' },
+      { name: 'sharesBps_', type: 'uint256[]' },
+    ]},
+  { name: 'vote', type: 'function', stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'programId',    type: 'uint256' },
+      { name: 'submissionId', type: 'uint256' },
+    ], outputs: [] },
+  { name: 'finalize', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'programId', type: 'uint256' }], outputs: [] },
+  { name: 'cancel', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ name: 'programId', type: 'uint256' }], outputs: [] },
+  { name: 'updateProgram', type: 'function', stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'programId',           type: 'uint256' },
+      { name: 'name_',               type: 'string'  },
+      { name: 'description_',        type: 'string'  },
+      { name: 'submissionDeadline_', type: 'uint256' },
+      { name: 'judgingDeadline_',    type: 'uint256' },
+    ], outputs: [] },
+
+  // Events
+  { name: 'ProgramCreated', type: 'event',
+    inputs: [
+      { name: 'programId', type: 'uint256', indexed: true },
+      { name: 'sponsor',   type: 'address', indexed: true },
+      { name: 'name',      type: 'string',  indexed: false },
+      { name: 'totalPool', type: 'uint256', indexed: false },
+      { name: 'submissionDeadline', type: 'uint256', indexed: false },
+      { name: 'judgingDeadline',    type: 'uint256', indexed: false },
+    ]},
+  { name: 'PrizePaid', type: 'event',
+    inputs: [
+      { name: 'programId',    type: 'uint256', indexed: true },
+      { name: 'submissionId', type: 'uint256', indexed: true },
+      { name: 'winner',       type: 'address', indexed: true },
+      { name: 'amount',       type: 'uint256', indexed: false },
+      { name: 'rank',         type: 'uint256', indexed: false },
+    ]},
+  { name: 'SponsorRefunded', type: 'event',
+    inputs: [
+      { name: 'programId', type: 'uint256', indexed: true },
+      { name: 'sponsor',   type: 'address', indexed: true },
+      { name: 'amount',    type: 'uint256', indexed: false },
+    ]},
+  { name: 'Finalized', type: 'event',
+    inputs: [
+      { name: 'programId',   type: 'uint256', indexed: true },
+      { name: 'winnerCount', type: 'uint256', indexed: false },
+    ]},
+  { name: 'ProgramUpdated', type: 'event',
+    inputs: [
+      { name: 'programId', type: 'uint256', indexed: true },
+      { name: 'sponsor',   type: 'address', indexed: true },
+    ]},
+] as const;
+
+// ── USDC ABI (minimal) ────────────────────────────────────────────────────────
+
+export const ERC20_ABI_V5 = [
+  { name: 'allowance', type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'address' }, { type: 'address' }], outputs: [{ type: 'uint256' }] },
+  { name: 'balanceOf', type: 'function', stateMutability: 'view',
+    inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] },
+  { name: 'approve', type: 'function', stateMutability: 'nonpayable',
+    inputs: [{ type: 'address' }, { type: 'uint256' }], outputs: [{ type: 'bool' }] },
+] as const;
+
+// ── Sponsor metadata helpers ──────────────────────────────────────────────────
+
+export interface SponsorMeta {
+  desc:        string;
+  sponsorName: string;
+  website:     string;
+  logo:        string;
+}
+
+export function parseSponsorMeta(raw: string): SponsorMeta {
+  try {
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const safe = (v: unknown) => (typeof v === 'string' ? v : '');
+    return {
+      desc:        safe(j['desc']),
+      sponsorName: safe(j['sponsorName']),
+      website:     safe(j['website']),
+      logo:        safe(j['logo']),
+    };
+  } catch {
+    // Plain-text description — backward compat
+    return { desc: raw, sponsorName: '', website: '', logo: '' };
+  }
+}
+
+export function encodeSponsorMeta(meta: SponsorMeta): string {
+  // Only include non-empty fields to keep the string short
+  const obj: Record<string, string> = {};
+  if (meta.desc)        obj['desc']        = meta.desc;
+  if (meta.sponsorName) obj['sponsorName'] = meta.sponsorName;
+  if (meta.website)     obj['website']     = meta.website;
+  if (meta.logo)        obj['logo']        = meta.logo;
+  return JSON.stringify(obj);
+}
+
+// Validate that a URL is http/https only
+export function isValidUrl(url: string): boolean {
+  if (!url) return true; // empty is fine
+  try {
+    const u = new URL(url);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch { return false; }
+}
+
+// ── V5 program type ───────────────────────────────────────────────────────────
+
+export interface V5Program {
+  id:                   number;
+  name:                 string;
+  description:          string; // raw (may be JSON or plain text)
+  meta:                 SponsorMeta;
+  sponsor:              `0x${string}`;
+  prizes:               bigint[];
+  totalDeposited:       bigint;
+  submissionDeadline:   number;
+  judgingDeadline:      number;
+  programType:          number;
+  category:             number;
+  exists:               boolean;
+  finalized:            boolean;
+  cancelled:            boolean;
+  // Computed
+  totalPool:            string;  // formatted USDC
+  prizesFmt:            string[]; // formatted USDC per rank
+}
+
+export interface V5TeamMember {
+  address:   `0x${string}`;
+  sharesBps: number;   // e.g. 5000 = 50%
+  sharePct:  string;   // e.g. "50.00"
+  amount:    bigint;   // prizeAwarded * sharesBps / 10000
+  amountFmt: string;
+}
+
+export interface V5Submission {
+  id:              number;
+  submitter:       `0x${string}`;
+  projectContract: `0x${string}`;
+  metadataURI:     string;
+  votes:           bigint;
+  prizeAwarded:    bigint;
+  prizeFmt:        string;
+  paid:            boolean; // always true in V5 after finalize (push-paid)
+  // Team fields
+  isSolo:          boolean; // true when payees.length === 1
+  teamName:        string;  // from metadataURI JSON "teamName" field
+  payees:          `0x${string}`[];
+  sharesBps:       bigint[];
+  members:         V5TeamMember[]; // computed from payees/sharesBps/prizeAwarded
+}
+
+// ── Read hooks ────────────────────────────────────────────────────────────────
+
+/** useV5ProgramCount — reads programCount from the app-selected V5 contract */
+export function useV5ProgramCount() {
+  const { config, appClient } = useNetworkStore();
+  const [count, setCount] = useState<number | undefined>(undefined);
+
+  const refetch = useCallback(async () => {
+    if (!config.v5Address) return;
+    try {
+      const n = await appClient.readContract({
+        address: config.v5Address,
+        abi: GRANTFLOW_V5_ABI,
+        functionName: 'programCount',
+      });
+      setCount(Number(n));
+    } catch { /* ignore */ }
+  }, [config, appClient]);
+
+  return { count, refetch };
+}
+
+/** useV5FeeBps — reads feeBps from the app-selected V5 contract (not wallet chain) */
+export function useV5FeeBps() {
+  const { config, appClient } = useNetworkStore();
+  const [feeBps, setFeeBps] = useState<bigint>(100n);
+
+  const refetch = useCallback(async () => {
+    if (!config.v5Address) return;
+    try {
+      const bps = await appClient.readContract({
+        address: config.v5Address,
+        abi: GRANTFLOW_V5_ABI,
+        functionName: 'feeBps',
+      });
+      setFeeBps(bps);
+    } catch { /* ignore */ }
+  }, [config, appClient]);
+
+  // Initial load
+  useMemo(() => { void refetch(); }, [refetch]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { feeBps, refetch };
+}
+
+// ── Low-level fetch helpers (accept explicit config + client) ─────────────────
+
+/** fetchV5Program — one-shot fetch, no React state. Used by override hooks. */
+export async function fetchV5Program(
+  programId: number,
+  cfg: import('./useNetworkStore').NetworkConfig,
+  client: PublicClient
+): Promise<V5Program | null> {
+  if (!cfg.v5Address) return null;
+  try {
+    const raw = await client.readContract({
+      address: cfg.v5Address,
+      abi: GRANTFLOW_V5_ABI,
+      functionName: 'getProgram',
+      args: [BigInt(programId)],
+    });
+    const [name, description, sponsor, prizes, totalDeposited,
+      submissionDeadline, judgingDeadline, programType, category,
+      exists, finalized, cancelled] = raw;
+    const meta = parseSponsorMeta(description);
+    const usdcDec = cfg.usdcDecimals;
+    const prizeArr = prizes as bigint[];
+    return {
+      id: programId,
+      name,
+      description,
+      meta,
+      sponsor,
+      prizes: prizeArr,
+      totalDeposited,
+      submissionDeadline: Number(submissionDeadline),
+      judgingDeadline: Number(judgingDeadline),
+      programType: Number(programType),
+      category: Number(category),
+      exists,
+      finalized,
+      cancelled,
+      totalPool: formatUnits(totalDeposited, usdcDec),
+      prizesFmt: prizeArr.map(p => formatUnits(p, usdcDec)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** fetchV5Submissions — one-shot fetch, no React state. */
+export async function fetchV5Submissions(
+  programId: number,
+  subCount: number,
+  cfg: import('./useNetworkStore').NetworkConfig,
+  client: PublicClient
+): Promise<V5Submission[]> {
+  if (!cfg.v5Address || subCount === 0) return [];
+  try {
+    const [scalarResults, teamResults] = await Promise.all([
+      Promise.all(
+        Array.from({ length: subCount }, (_, i) =>
+          client.readContract({
+            address: cfg.v5Address,
+            abi: GRANTFLOW_V5_ABI,
+            functionName: 'getSubmission',
+            args: [BigInt(programId), BigInt(i)],
+          })
+        )
+      ),
+      Promise.all(
+        Array.from({ length: subCount }, (_, i) =>
+          client.readContract({
+            address: cfg.v5Address,
+            abi: GRANTFLOW_V5_ABI,
+            functionName: 'getSubmissionTeam',
+            args: [BigInt(programId), BigInt(i)],
+          }).catch(() => [[], []] as [`0x${string}`[], bigint[]])
+        )
+      ),
+    ]);
+    return scalarResults.map((r, i) => {
+      const [submitter, projectContract, metadataURI, votes, prizeAwarded, paid] = r;
+      /* eslint-disable typescript/no-unnecessary-type-assertion */
+      const teamRaw   = teamResults[i] as unknown as [`0x${string}`[], bigint[]];
+      const payees    = (teamRaw[0] ?? [submitter]) as `0x${string}`[];
+      /* eslint-enable typescript/no-unnecessary-type-assertion */
+      const sharesBps = teamRaw[1] ?? [10_000n];
+      const isSolo    = payees.length === 1;
+      const teamName  = parseTeamName(metadataURI);
+      const members   = buildTeamMembers(payees, sharesBps, prizeAwarded, cfg.usdcDecimals);
+      return {
+        id: i, submitter, projectContract, metadataURI, votes, prizeAwarded,
+        prizeFmt: formatUnits(prizeAwarded, cfg.usdcDecimals),
+        paid, isSolo, teamName, payees, sharesBps, members,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** useV5Program — reads a single program by id */
+export function useV5Program(programId: number) {
+  const { config, appClient } = useNetworkStore();
+  const [prog, setProg] = useState<V5Program | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const result = await fetchV5Program(programId, config, appClient);
+    setProg(result);
+    setLoading(false);
+  }, [config, appClient, programId]);
+
+  // eslint-disable-next-line react-compiler/react-compiler,react/set-state-in-effect
+  useEffect(() => { void refetch(); }, [refetch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { prog, loading, refetch };
+}
+
+/**
+ * useV5ProgramForChain — like useV5Program but reads from an EXPLICIT chain
+ * regardless of the globally selected network. Used by ProgramDetailV5 when
+ * the program chain is encoded in the URL (e.g. /p/v5-testnet/3).
+ */
+export function useV5ProgramForChain(
+  programId: number,
+  cfg: import('./useNetworkStore').NetworkConfig,
+  client: PublicClient
+) {
+  const [prog, setProg] = useState<V5Program | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const result = await fetchV5Program(programId, cfg, client);
+    setProg(result);
+    setLoading(false);
+  }, [cfg, client, programId]);
+
+  // eslint-disable-next-line react-compiler/react-compiler,react/set-state-in-effect
+  useEffect(() => { void refetch(); }, [refetch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { prog, loading, refetch };
+}
+
+/** useV5Submissions — reads all submissions for a program (including team data) */
+export function useV5Submissions(programId: number, subCount: number) {
+  const { config, appClient } = useNetworkStore();
+  return useV5SubmissionsForChain(programId, subCount, config, appClient);
+}
+
+/**
+ * useV5SubmissionsForChain — like useV5Submissions but uses an explicit
+ * NetworkConfig + PublicClient instead of the globally selected network.
+ */
+export function useV5SubmissionsForChain(
+  programId: number,
+  subCount: number,
+  cfg: import('./useNetworkStore').NetworkConfig,
+  client: PublicClient
+) {
+  const [subs, setSubs] = useState<V5Submission[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    const result = await fetchV5Submissions(programId, subCount, cfg, client);
+    setSubs(result);
+    setLoading(false);
+  }, [cfg, client, programId, subCount]);
+
+  return { subs, loading, refetch };
+}
+
+/** useV5UsdcAllowance — reads allowance from the app-selected network RPC */
+export function useV5UsdcAllowance(owner: `0x${string}` | undefined) {
+  const { config, appClient } = useNetworkStore();
+  const [allowance, setAllowance] = useState<bigint>(0n);
+
+  const refetch = useCallback(async () => {
+    if (!owner || !config.v5Address) return;
+    try {
+      const a = await appClient.readContract({
+        address: config.usdcAddress,
+        abi: ERC20_ABI_V5,
+        functionName: 'allowance',
+        args: [owner, config.v5Address],
+      });
+      setAllowance(a);
+    } catch { /* ignore */ }
+  }, [owner, config, appClient]);
+
+  return { allowance, refetch };
+}
+
+// ── Write hook ────────────────────────────────────────────────────────────────
+
+/** sendAndConfirm — wraps writeContractAsync + waitForTransactionReceipt */
+async function sendAndConfirm(
+  writeContractAsync: (args: Record<string, unknown>) => Promise<Hash>,
+  appClient: PublicClient,
+  request: Record<string, unknown>
+): Promise<Hash> {
+  let hash: Hash;
+  try {
+    hash = await writeContractAsync(request);
+  } catch (err) {
+    if (isAlreadyInFlight(err)) {
+      throw Object.assign(new Error('__already_in_flight__'), { alreadyInFlight: true });
+    }
+    const msg = JSON.stringify(err);
+    if (msg.includes('already known')) {
+      throw Object.assign(new Error('__already_in_flight__'), { alreadyInFlight: true });
+    }
+    throw err;
+  }
+  await appClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+  return hash;
+}
+
+export interface V5WriteState {
+  busy:    boolean;
+  txErr:   string;
+  txHash:  Hash | null;
+  clearErr: () => void;
+}
+
+export function useV5Write() {
+  const { address }    = useAccount();
+  const { writeContractAsync } = useWriteContract();
+  const { config, appClient } = useNetworkStore();
+  const [busy, setBusy]       = useState(false);
+  const [txErr, setTxErr]     = useState('');
+  const [txHash, setTxHash]   = useState<Hash | null>(null);
+
+  const write = useCallback(async <T>(
+    fn: () => Promise<T>
+  ): Promise<T | null> => {
+    setBusy(true); setTxErr(''); setTxHash(null);
+    try {
+      const result = await fn();
+      return result;
+    } catch (e) {
+      setTxErr(parseV5Error(e));
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  // Helper: typed writeContractAsync that accepts our loose Record type
+  const wcAsync = writeContractAsync as (args: Record<string, unknown>) => Promise<Hash>;
+
+  const approveUsdc = useCallback(async (amount: bigint): Promise<Hash | null> => {
+    if (!address || !config.v5Address) return null;
+    return write(async () => {
+      const hash = await sendAndConfirm(wcAsync, appClient, {
+        address: config.usdcAddress,
+        abi: ERC20_ABI_V5,
+        functionName: 'approve',
+        args: [config.v5Address, amount],
+      });
+      setTxHash(hash);
+      return hash;
+    });
+  }, [address, config, appClient, write, wcAsync]);
+
+  const createProgram = useCallback(async (args: {
+    name: string; description: string;
+    prizes: bigint[]; submissionDeadline: bigint; judgingDeadline: bigint;
+    judges: `0x${string}`[]; programType: number; category: number;
+  }): Promise<Hash | null> => {
+    if (!address || !config.v5Address) return null;
+    return write(async () => {
+      const hash = await sendAndConfirm(wcAsync, appClient, {
+        address: config.v5Address,
+        abi: GRANTFLOW_V5_ABI,
+        functionName: 'createProgram',
+        args: [args.name, args.description, args.prizes,
+          args.submissionDeadline, args.judgingDeadline,
+          args.judges, args.programType, args.category],
+      });
+      setTxHash(hash);
+      return hash;
+    });
+  }, [address, config, appClient, write, wcAsync]);
+
+  const submit = useCallback(async (
+    programId: number,
+    projectContract: `0x${string}`,
+    metadataURI: string,
+    payees: `0x${string}`[],
+    sharesBps: bigint[]
+  ): Promise<Hash | null> => {
+    if (!address || !config.v5Address) return null;
+    return write(async () => {
+      const hash = await sendAndConfirm(wcAsync, appClient, {
+        address: config.v5Address,
+        abi: GRANTFLOW_V5_ABI,
+        functionName: 'submit',
+        args: [BigInt(programId), projectContract, metadataURI, payees, sharesBps],
+      });
+      setTxHash(hash);
+      return hash;
+    });
+  }, [address, config, appClient, write, wcAsync]);
+
+  const vote = useCallback(async (programId: number, submissionId: number): Promise<Hash | null> => {
+    if (!address || !config.v5Address) return null;
+    return write(async () => {
+      const hash = await sendAndConfirm(wcAsync, appClient, {
+        address: config.v5Address,
+        abi: GRANTFLOW_V5_ABI,
+        functionName: 'vote',
+        args: [BigInt(programId), BigInt(submissionId)],
+      });
+      setTxHash(hash);
+      return hash;
+    });
+  }, [address, config, appClient, write, wcAsync]);
+
+  const finalize = useCallback(async (programId: number): Promise<Hash | null> => {
+    if (!address || !config.v5Address) return null;
+    return write(async () => {
+      const hash = await sendAndConfirm(wcAsync, appClient, {
+        address: config.v5Address,
+        abi: GRANTFLOW_V5_ABI,
+        functionName: 'finalize',
+        args: [BigInt(programId)],
+      });
+      setTxHash(hash);
+      return hash;
+    });
+  }, [address, config, appClient, write, wcAsync]);
+
+  const cancel = useCallback(async (programId: number): Promise<Hash | null> => {
+    if (!address || !config.v5Address) return null;
+    return write(async () => {
+      const hash = await sendAndConfirm(wcAsync, appClient, {
+        address: config.v5Address,
+        abi: GRANTFLOW_V5_ABI,
+        functionName: 'cancel',
+        args: [BigInt(programId)],
+      });
+      setTxHash(hash);
+      return hash;
+    });
+  }, [address, config, appClient, write, wcAsync]);
+
+  const updateProgram = useCallback(async (args: {
+    programId: number; name: string; description: string;
+    submissionDeadline: bigint; judgingDeadline: bigint;
+  }): Promise<Hash | null> => {
+    if (!address || !config.v5Address) return null;
+    return write(async () => {
+      const hash = await sendAndConfirm(wcAsync, appClient, {
+        address: config.v5Address,
+        abi: GRANTFLOW_V5_ABI,
+        functionName: 'updateProgram',
+        args: [BigInt(args.programId), args.name, args.description,
+          args.submissionDeadline, args.judgingDeadline],
+      });
+      setTxHash(hash);
+      return hash;
+    });
+  }, [address, config, appClient, write, wcAsync]);
+
+  return {
+    busy, txErr, txHash,
+    clearErr: () => setTxErr(''),
+    approveUsdc, createProgram, submit, vote, finalize, cancel, updateProgram,
+  };
+}
+
+// ── Error parser ──────────────────────────────────────────────────────────────
+
+function parseV5Error(err: unknown): string {
+  // Already-in-flight sentinel handled upstream
+  if (isAlreadyInFlight(err)) return 'Transaction may be pending — check your wallet.';
+
+  const msg = (() => {
+    if (err instanceof Error) return err.message + ' ' + ((err as { details?: string }).details ?? '');
+    if (typeof err === 'object' && err !== null) {
+      return JSON.stringify(err);
+    }
+    return String(err);
+  })().toLowerCase();
+
+  if (msg.includes('user rejected') || msg.includes('user denied'))
+    return 'Transaction rejected in wallet.';
+  if (msg.includes('insufficient funds') || msg.includes('insufficient usdc'))
+    return 'Insufficient USDC balance.';
+  if (msg.includes('notjudge'))         return 'Only assigned judges can vote.';
+  if (msg.includes('alreadyvoted'))     return 'You already voted on this submission.';
+  if (msg.includes('notsubmissionphase'))   return 'Submissions are closed.';
+  if (msg.includes('notjudgingphase'))  return 'Voting is not open yet.';
+  if (msg.includes('notafterj'))        return 'Judging deadline has not passed yet.';
+  if (msg.includes('alreadyfinalized')) return 'Program is already finalized.';
+  if (msg.includes('conflictofinterest')) return 'You cannot submit to a program you judge or sponsor.';
+  if (msg.includes('alreadysubmitted')) return 'You already submitted to this program.';
+  if (msg.includes('toomanysub'))       return 'Submission limit reached.';
+  if (msg.includes('submissionsexist')) return 'Cannot cancel: submissions already exist.';
+  if (msg.includes('notsponsor'))       return 'Only the program sponsor can do this.';
+  if (msg.includes('invalidparams'))    return 'Invalid parameters. Check deadlines and prize amounts.';
+  if (msg.includes('alreadycancelled')) return 'Program is already cancelled.';
+  if (msg.includes('already known'))    return 'Transaction already submitted — check your wallet.';
+  return 'Transaction failed. Check your wallet and try again.';
+}
+
+// ── Shareable URL helpers ─────────────────────────────────────────────────────
+
+export function buildProgramUrl(
+  chainKey: 'mainnet' | 'testnet',
+  programId: number,
+  version: 'v5' | 'v4' = 'v5'
+): string {
+  const base = typeof window !== 'undefined'
+    ? `${window.location.origin}`
+    : 'https://grantflowapp.vercel.app';
+  return `${base}/p/${version}-${chainKey}/${programId}`;
+}
+
+export function parseProgramPath(
+  pathname: string
+): { version: 'v5' | 'v4'; chain: 'mainnet' | 'testnet'; programId: number } | null {
+  // /p/<version>-<chain>/<id>
+  const m = pathname.match(/^\/p\/(v5|v4)-(mainnet|testnet)\/(\d+)$/);
+  if (!m) return null;
+  return {
+    version: m[1] as 'v5' | 'v4',
+    chain:   m[2] as 'mainnet' | 'testnet',
+    programId: parseInt(m[3], 10),
+  };
+}
+
+/** formatUsdcV5 — format bigint USDC to human-readable string */
+export function formatUsdcV5(amount: bigint, decimals = 6): string {
+  return formatUnits(amount, decimals);
+}
+
+/** parseTeamName — extract "teamName" from metadataURI JSON if present */
+export function parseTeamName(metadataURI: string): string {
+  try {
+    const j = JSON.parse(metadataURI) as Record<string, unknown>;
+    return typeof j['teamName'] === 'string' ? j['teamName'] : '';
+  } catch { return ''; }
+}
+
+/** buildTeamMembers — derive V5TeamMember array from raw on-chain data */
+export function buildTeamMembers(
+  payees: readonly `0x${string}`[],
+  sharesBps: readonly bigint[],
+  prizeAwarded: bigint,
+  decimals: number
+): V5TeamMember[] {
+  return payees.map((addr, i) => {
+    const bps = sharesBps[i] ?? 0n;
+    const amount = prizeAwarded > 0n ? (prizeAwarded * bps) / 10_000n : 0n;
+    return {
+      address:   addr,
+      sharesBps: Number(bps),
+      sharePct:  (Number(bps) / 100).toFixed(2),
+      amount,
+      amountFmt: formatUnits(amount, decimals),
+    };
+  });
+}
+
+export function parseUsdcV5(amount: string, decimals = 6): bigint {
+  try { return parseUnits(amount, decimals); }
+  catch { return 0n; }
+}

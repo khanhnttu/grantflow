@@ -21,6 +21,7 @@ export type AppPage =
   | 'landing' | 'explore' | 'sponsor' | 'builder' | 'reviewer'
   | 'program' | 'about' | 'docs' | 'terms' | 'deploy'
   | 'v4-explore' | 'v4-program' | 'v4-create' | 'v4-submissions' | 'v4-my-programs'
+  | 'v5-explore' | 'v5-program' | 'v5-create'
   | 'how-it-works' | 'compare' | 'developers' | 'built-vs-planned';
 
 export type ThemeMode = 'light' | 'dark';

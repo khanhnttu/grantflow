@@ -7,7 +7,7 @@
  *   switchNetwork()  — calls wallet_switchEthereumChain, falls back to
  *                       wallet_addEthereumChain if the chain isn't known
  */
-import { useChainId, useConnectorClient } from 'wagmi';
+import { useAccount, useConnectorClient } from 'wagmi';
 import { useCallback } from 'react';
 import { useNetworkStore, NETWORK_CONFIGS } from './useNetworkStore';
 
@@ -34,13 +34,17 @@ export interface WrongNetworkState {
 }
 
 export function useWrongNetwork(): WrongNetworkState {
-  const walletChainId = useChainId();          // live from injected connector
+  // useAccount gives us both status AND chainId — only flag mismatch when
+  // the wallet is fully connected, preventing the loading-flash false positive.
+  const { chainId: walletChainId, status } = useAccount();
   const { config }    = useNetworkStore();
   const { data: connectorClient } = useConnectorClient();
 
   const appChainId = config.chainId;
-  // Connected but no chain yet → not wrong
-  const isWrong = walletChainId !== undefined && walletChainId !== appChainId;
+  // Only show the banner when the wallet is connected AND on the wrong chain.
+  const isWrong = status === 'connected' &&
+    walletChainId !== undefined &&
+    walletChainId !== appChainId;
 
   const switchNetwork = useCallback(async (): Promise<boolean> => {
     const provider = connectorClient?.transport as

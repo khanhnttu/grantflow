@@ -22,13 +22,17 @@ GrantFlow is an onchain USDC grant and hackathon payout platform on Arc. Sponsor
 
 | Contract   | Chain        | Address                                       | Explorer |
 |------------|--------------|-----------------------------------------------|----------|
-| GrantFlowV4 (MAINNET, **active**) | Arc Mainnet | 0x41ffdab65fca60bda9beb455285d29ab753c3d2e | https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e |
-| GrantFlowV4 (testnet, **active**) | Arc Testnet  | 0x0754d3359f18be2079c6d3cea29658b464cfe946    | https://explorer.testnet.arc.io/address/0x0754d3359f18be2079c6d3cea29658b464cfe946 |
+| GrantFlowV5 (testnet, **active** — team-split, push-payout, 23/23 e2e pass) | Arc Testnet | 0x23d26fb2661497c1e658e8d717df8a7dea2f62c0 | https://explorer.testnet.arc.io/address/0x23d26fb2661497c1e658e8d717df8a7dea2f62c0 |
+| GrantFlowV5 (MAINNET) | Arc Mainnet | *not yet deployed — browser wallet required* | — |
+| GrantFlowV4 (MAINNET, legacy active) | Arc Mainnet | 0x41ffdab65fca60bda9beb455285d29ab753c3d2e | https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e |
+| GrantFlowV4 (testnet, legacy active) | Arc Testnet  | 0x0754d3359f18be2079c6d3cea29658b464cfe946    | https://explorer.testnet.arc.io/address/0x0754d3359f18be2079c6d3cea29658b464cfe946 |
 | GrantFlowV4 (testnet, old — wrong owner) | Arc Testnet  | 0x8a8d4e2378842d02690e247c9241842a30bbf7c4    | retired |
 | GrantFlow v3 (MAINNET, legacy) | Arc Mainnet  | 0x7c2866a62e6ad73e15e243d4341219eb3995fe7d    | https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d |
 | GrantFlow v3 (testnet, legacy) | Arc Testnet  | 0x3805f86f71b47480a2b31d563ce1620b490a841f    | https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f |
 
 V4 Mainnet deploy tx: 0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617
+V5 Testnet deploy tx: 0x8043aa74fb757270f8d3640f26a87e742974926e46353deca51299ae7a66e030
+V5 Testnet feeRecipient(): 0x62628A9BB100D15494D00f6C76c22C975bBB7195 ✓
 V4 Testnet deploy tx: 0x13e62998225a0e55834ad5942946703c5d0118573f74f58a8ea38eb801e4e44f
 Note: Ownable2Step pending owner on testnet is 0xa3039A5… (platform deployer); call acceptOwnership() from 0x62628…3195 to complete the transfer.
 V3 Mainnet deploy tx: 0x15fa390fb616c79d891f8194618b5d9e56928402f920aa5bf21363d7ba596cc9
@@ -60,6 +64,10 @@ Owner (Ownable2Step, testnet): 0x5B12Ce46C7194aD57d143bC22847224047b1Ef42
 - `src/lib/contractHelpers.ts` — typed tuple helpers for useReadContracts results
 - `src/hooks/useGrantFlow.ts` — wagmi read hooks (including useFeeBps, useTotalFeesCollected, useAllProgramMetas, useProgramMeta)
 - `src/components/pages/` — SponsorPage, BuilderPage, ReviewerPage, ProgramsPage
+- `src/hooks/useGrantFlowV5.ts` — V5 ABI, read/write hooks, encodeSponsorMeta/parseSponsorMeta, buildProgramUrl/parseProgramPath
+- `src/components/pages/v5/ProgramDetailV5.tsx` — V5 program detail (push-payout, ShareBox, ResultsTab, EditProgramModal)
+- `src/components/pages/v5/ResultsTab.tsx` — Podium + winner cards + payout tx links (V5 push or V4 pull)
+- `src/components/pages/v5/EditProgramModal.tsx` — updateProgram (sponsor-only, 0 submissions, before deadline)
 
 ## Architecture Notes
 
@@ -99,6 +107,8 @@ Users can switch between Arc Mainnet and Arc Testnet at runtime via the NetworkD
 
 - `VITE_GRANTFLOW_ADDRESS` — testnet GrantFlow v3 address (set in .env after deploy)
 - `VITE_GRANTFLOW_ADDRESS_MAINNET` — mainnet GrantFlow v3 address
+- `VITE_GRANTFLOW_V5_ADDRESS` — testnet GrantFlowV5 address (`0x23d26fb2661497c1e658e8d717df8a7dea2f62c0`) [team-split version, replaces 0x46e4…bca]
+- `VITE_GRANTFLOW_V5_ADDRESS_MAINNET` — mainnet GrantFlowV5 address (set after browser wallet deploy)
 - `VITE_GRANTFLOW_V4_ADDRESS` — testnet GrantFlowV4 address (`0x8a8d4e2378842d02690e247c9241842a30bbf7c4`)
 - `VITE_GRANTFLOW_V4_ADDRESS_MAINNET` — mainnet GrantFlowV4 address (`0x41ffdab65fca60bda9beb455285d29ab753c3d2e`)
 - `VITE_CHAIN` — `testnet` (default) or `mainnet` (sets build-time default; overridden by localStorage at runtime)

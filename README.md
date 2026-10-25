@@ -1,6 +1,6 @@
 # GrantFlow
 
-Onchain grant, hackathon, bounty, and referral payout platform. Sponsors create programs (Onchain Build or Open Bounty) with a category and optional description, and lock a USDC prize pool. Builders submit their work; reviewers vote; winners are paid automatically when the approval threshold is reached. Unspent funds are reclaimable by the sponsor after the deadline. A small platform fee is charged at program creation to sustain the protocol.
+Onchain grant, hackathon, bounty, and referral payout platform. Sponsors create programs with ranked USDC prizes and two-phase deadlines (Submission then Judging). Builders submit work; judges vote; after finalization prizes are pushed directly to winners in USDC (V5, the default) with no claim step needed. A small platform fee (default 1%) is charged at program creation. Older programs (V4 pull-claim, V3 legacy) remain viewable.
 
 Built with [Arc Studio](https://studio.arc.io)
 
@@ -11,7 +11,9 @@ Built with [Arc Studio](https://studio.arc.io)
 | | |
 |---|---|
 | **App** | [grantflowapp.vercel.app](https://grantflowapp.vercel.app) |
-| **GrantFlowV4** | `0x41ffdab65fca60bda9beb455285d29ab753c3d2e` ([explorer](https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e)) |
+| **GrantFlowV5** | *mainnet not yet deployed — owner deploys from browser wallet* |
+| **GrantFlowV5 (testnet)** | `0x46e46f33c069c8093e3e177e8be8203537fecbca` ([explorer](https://explorer.testnet.arc.io/address/0x46e46f33c069c8093e3e177e8be8203537fecbca)) |
+| **GrantFlowV4** | `0x41ffdab65fca60bda9beb455285d29ab753c3d2e` ([explorer](https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e)) (legacy active) |
 | **V4 deploy tx** | `0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617` |
 | **GrantFlowV3** | `0x7c2866a62e6ad73e15e243d4341219eb3995fe7d` ([explorer](https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d)) (legacy) |
 | **Chain** | Arc Mainnet (chain ID 5042) |
@@ -96,6 +98,8 @@ V4 Testnet: `0x8a8d4e2378842d02690e247c9241842a30bbf7c4` (68/68 Foundry tests pa
 | `VITE_GRANTFLOW_ADDRESS` | GrantFlow v3 contract address on Arc Testnet | Yes |
 | `VITE_GRANTFLOW_ADDRESS_MAINNET` | GrantFlow v3 contract address on Arc Mainnet | Mainnet only |
 | `VITE_GRANTFLOW_V4_ADDRESS` | GrantFlowV4 contract address on Arc Testnet | Yes (defaults to deployed testnet address) |
+| `VITE_GRANTFLOW_V5_ADDRESS` | GrantFlowV5 contract address on Arc Testnet | No (defaults to deployed testnet address) |
+| `VITE_GRANTFLOW_V5_ADDRESS_MAINNET` | GrantFlowV5 contract address on Arc Mainnet | Mainnet only (set after browser wallet deploy) |
 | `VITE_GRANTFLOW_V4_ADDRESS_MAINNET` | GrantFlowV4 contract address on Arc Mainnet | Mainnet only |
 | `VITE_CHAIN` | `testnet` (default) or `mainnet` | No |
 | `VITE_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID for wallet connections | No (ConnectKit works without it) |
@@ -131,13 +135,25 @@ bun run build
 cd contracts && forge test -vv
 ```
 
-157 tests (89 v3 + 68 v4) covering happy paths, reverts, fuzz, fee model, both program types — all passing.
+192 tests (89 v3 + 68 v4 + 35 v5) covering happy paths, reverts, fuzz, fee model, both program types, push-payout — all passing.
 
 **i18n (EN/VI completeness)**
 
 ```bash
 bun run check-i18n   # checks all EN keys exist in VI
 bun run test:i18n    # verifies EN keys equal VI key count, sample translations, new keys
+```
+
+**E2E testnet (full lifecycle against Arc Testnet)**
+
+```bash
+bun run test:e2e     # create program, submit, judge, finalize, claim, reclaim, cancel
+```
+
+**Production smoke test**
+
+```bash
+bun run test:smoke   # checks live Vercel deployment: meta tags, assets, sitemaps, routes
 ```
 
 ---
