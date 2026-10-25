@@ -63,9 +63,22 @@ type RouteState = {
   programNetwork?: 'mainnet' | 'testnet';
 };
 
+// Pages reachable via a bare path like /deploy or /about (no hash, no /p/ prefix)
+const BARE_PATH_PAGES: Record<string, AppPage> = {
+  '/deploy':        'deploy',
+  '/about':         'about',
+  '/docs':          'docs',
+  '/terms':         'terms',
+  '/how-it-works':  'how-it-works',
+  '/compare':       'compare',
+  '/developers':    'developers',
+  '/built-vs-planned': 'built-vs-planned',
+};
+
 function parseRoute(): RouteState {
-  // First: handle clean path routes like /p/v5-mainnet/3
   const path = window.location.pathname;
+
+  // 1. Clean path program routes: /p/v5-testnet/3
   const pathResult = parseProgramPath(path);
   if (pathResult) {
     return {
@@ -76,7 +89,11 @@ function parseRoute(): RouteState {
     };
   }
 
-  // Fallback: legacy hash routing
+  // 2. Bare path routes: /deploy, /about, etc.
+  const barePage = BARE_PATH_PAGES[path];
+  if (barePage) return { page: barePage };
+
+  // 3. Legacy hash routing
   const hash = window.location.hash.replace('#', '').replace(/^\//, '');
   if (!hash || hash === '/') return { page: 'landing' };
   if (hash.startsWith('program/')) {
@@ -107,14 +124,18 @@ function AppInner() {
     useState<RouteState>(parseRoute);
   const { config, setNetwork } = useNetworkStore();
 
-  // When a shareable URL encodes a specific chain (e.g. /p/v5-testnet/3),
-  // switch the global network store to that chain so writes, the footer,
-  // and the network dropdown all stay consistent.
+  // When a /p/ share link encodes a specific chain, sync the global network
+  // store ONCE on mount (or when the program chain changes). Critically, this
+  // effect must NOT run when programNetwork is undefined — that is the signal
+  // that the user has navigated away from a program page and their manual
+  // dropdown choice should win and persist.
   useEffect(() => {
-    if (programNetwork && programNetwork !== config.name) {
+    if (programNetwork !== undefined && programNetwork !== config.name) {
       setNetwork(programNetwork);
     }
-  // Run only when the programNetwork from the URL changes, not on every render.
+  // Intentionally omit `config.name` and `setNetwork` from deps: we want this
+  // to fire only when the URL's encoded chain changes, not on every store update
+  // (which would create a feedback loop fighting the dropdown).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programNetwork]);
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -154,19 +175,22 @@ function AppInner() {
   const navigate = (p: AppPage, id?: number) => {
     if (p === 'program' && id !== undefined) {
       window.location.hash = `program/${id}`;
+      // programNetwork: undefined — not a V5 path route, no chain lock
       setRoute({ page: p, programId: id });
     } else if (p === 'v4-program' && id !== undefined) {
       window.location.hash = `v4-program/${id}`;
       setRoute({ page: p, programId: id });
     } else if (p === 'v5-program' && id !== undefined) {
-      // Use clean path URL for V5 programs
-      const chain = config.name; // use current active network
+      // Use clean path URL for V5 programs — encode the currently active chain
+      const chain = config.name;
       const path = `/p/v5-${chain}/${id}`;
       window.history.pushState({}, '', path);
       setRoute({ page: p, programId: id, programVersion: 'v5', programNetwork: chain });
     } else {
+      // Any non-program navigation: clear programNetwork so the URL-chain sync
+      // effect never fires again and the user's manual dropdown choice persists.
       window.location.hash = p === 'landing' ? '/' : p;
-      setRoute({ page: p, programId: id });
+      setRoute({ page: p, programId: id, programNetwork: undefined });
     }
   };
 
