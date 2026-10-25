@@ -10,7 +10,7 @@ Built with [Arc Studio](https://studio.arc.io)
 
 | | |
 |---|---|
-| **App** | [grantflow-usdc.vercel.app](https://grantflow-usdc.vercel.app) |
+| **App** | [grantflowapp.vercel.app](https://grantflowapp.vercel.app) |
 | **GrantFlowV4** | `0x41ffdab65fca60bda9beb455285d29ab753c3d2e` ([explorer](https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e)) |
 | **V4 deploy tx** | `0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617` |
 | **GrantFlowV3** | `0x7c2866a62e6ad73e15e243d4341219eb3995fe7d` ([explorer](https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d)) (legacy) |
@@ -26,6 +26,15 @@ Built with [Arc Studio](https://studio.arc.io)
 - **Contracts**: Solidity 0.8.28, Foundry, OpenZeppelin 5.6.1 (SafeERC20, ReentrancyGuard, Ownable2Step)
 - **Chain**: Arc Testnet (default) or Arc Mainnet, selected by `VITE_CHAIN`
 - **Token**: USDC (same address on both chains: `0x3600000000000000000000000000000000000000`)
+
+## Brand assets
+
+- **Logo components**: `src/components/BrandLogo.tsx` — exports `LogoMark` (icon only) and `Logo` (icon + wordmark), both with `variant="light"` (white mark on navy) or `variant="dark"` (sky-blue mark on navy) props
+- **Favicon**: `public/favicon.svg` (SVG, primary); `public/favicon-32x32.png`, `public/favicon-16x16.png` (PNG fallbacks)
+- **Apple touch icon**: `public/apple-touch-icon.png` (180×180)
+- **PWA icons**: `public/icon-192.png`, `public/icon-512.png`
+- **PWA manifest**: `public/site.webmanifest` (name: GrantFlow, theme_color: `#1555A0`)
+- **OG image**: `public/og-image.svg` (1200×630, served at `/og-image.svg`)
 
 ---
 
@@ -89,6 +98,7 @@ V4 Testnet: `0x8a8d4e2378842d02690e247c9241842a30bbf7c4` (68/68 Foundry tests pa
 | `VITE_GRANTFLOW_V4_ADDRESS` | GrantFlowV4 contract address on Arc Testnet | Yes (defaults to deployed testnet address) |
 | `VITE_GRANTFLOW_V4_ADDRESS_MAINNET` | GrantFlowV4 contract address on Arc Mainnet | Mainnet only |
 | `VITE_CHAIN` | `testnet` (default) or `mainnet` | No |
+| `VITE_WALLETCONNECT_PROJECT_ID` | WalletConnect project ID for wallet connections | No (ConnectKit works without it) |
 | `RPC_PROXY_BASE_URL` | Arc Studio RPC proxy base URL | Optional outside Arc Studio |
 | `RPC_PROXY_TOKEN` | Arc Studio RPC proxy auth token | Optional outside Arc Studio |
 | `RPC_PROXY_CHAINS` | Comma-separated list of chains available on the proxy | Optional outside Arc Studio |
@@ -113,13 +123,22 @@ bun run build
 
 ---
 
-## Test (Solidity)
+## Test
+
+**Solidity (Foundry)**
 
 ```bash
 cd contracts && forge test -vv
 ```
 
-89 tests covering happy paths, reverts, fuzz, fee model, and both program types (ONCHAIN_BUILD / OPEN_BOUNTY) — all passing.
+157 tests (89 v3 + 68 v4) covering happy paths, reverts, fuzz, fee model, both program types — all passing.
+
+**i18n (EN/VI completeness)**
+
+```bash
+bun run check-i18n   # checks all EN keys exist in VI
+bun run test:i18n    # verifies EN keys equal VI key count, sample translations, new keys
+```
 
 ---
 

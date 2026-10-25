@@ -11,6 +11,7 @@
  */
 
 import { useState } from 'react';
+import { useI18n } from '@/hooks/useI18n';
 import {
   useAccount,
   useSwitchChain,
@@ -42,6 +43,7 @@ interface DeployPageProps {
 }
 
 export function DeployPage({ onBack }: DeployPageProps) {
+  const { t } = useI18n();
   const { address: connectedAddress, chainId } = useAccount();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
 
@@ -188,7 +190,7 @@ export function DeployPage({ onBack }: DeployPageProps) {
           style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}
         >
           <div className="text-sm" style={{ color: 'var(--ink-2)' }}>
-            Your wallet is on a different network. Switch to Arc Mainnet to deploy.
+            {t('deploy.wrongNetwork')}
           </div>
           <button
             onClick={() => switchChain({ chainId: arcMainnet.id })}
@@ -197,7 +199,7 @@ export function DeployPage({ onBack }: DeployPageProps) {
             style={{ background: 'var(--accent)' }}
           >
             {isSwitching && <Loader2 className="size-3.5 animate-spin" />}
-            Switch to Arc Mainnet
+            {t('deploy.switchNetwork')}
           </button>
         </div>
       )}
@@ -231,7 +233,7 @@ export function DeployPage({ onBack }: DeployPageProps) {
           {/* feeRecipient */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ink-2)' }}>
-              Fee recipient
+              {t('deploy.feeRecipient')}
             </label>
             <input
               type="text"
@@ -300,7 +302,7 @@ export function DeployPage({ onBack }: DeployPageProps) {
               className="mt-0.5 size-4 accent-[var(--accent)] flex-shrink-0"
             />
             <span className="text-sm" style={{ color: 'var(--ink-2)' }}>
-              I have reviewed all arguments above. I understand this deploys to Arc Mainnet with
+              {t('deploy.confirmCheck')}
               real USDC, is irreversible, and I am solely responsible for the result.
             </span>
           </label>
@@ -326,7 +328,7 @@ export function DeployPage({ onBack }: DeployPageProps) {
 
           {!connectedAddress && (
             <p className="text-xs text-center" style={{ color: 'var(--ink-2)' }}>
-              Connect your wallet first (top-right).
+              {t('deploy.notConnected')}
             </p>
           )}
         </div>
@@ -341,7 +343,7 @@ export function DeployPage({ onBack }: DeployPageProps) {
           <Loader2 className="size-10 animate-spin" style={{ color: 'var(--accent)' }} />
           <div>
             <p className="font-semibold" style={{ color: 'var(--ink)' }}>
-              {isDeploying ? 'Waiting for wallet signature…' : isWaiting ? 'Transaction submitted — waiting for confirmation…' : 'Processing…'}
+              {isDeploying ? t('deploy.waitingSig') : isWaiting ? t('deploy.waitingConfirm') : t('deploy.processing')}
             </p>
             {deployTxHash && (
               <a
@@ -373,7 +375,7 @@ export function DeployPage({ onBack }: DeployPageProps) {
           {/* Contract address */}
           <div className="space-y-1.5">
             <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--ink-2)' }}>
-              Contract address
+              {t('deploy.contractAddress')}
             </p>
             <div className="flex items-center gap-2">
               <code
@@ -417,7 +419,7 @@ export function DeployPage({ onBack }: DeployPageProps) {
                 <button
                   onClick={() => copyToClipboard(deployTxHash, 'tx')}
                   className="flex-shrink-0 rounded-lg p-2 transition-colors hover:bg-black/5"
-                  title="Copy tx hash"
+                  title={t('deploy.copyTx')}
                 >
                   {copied === 'tx' ? <Check className="size-4 text-green-600" /> : <Copy className="size-4" style={{ color: 'var(--ink-2)' }} />}
                 </button>

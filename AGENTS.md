@@ -23,11 +23,14 @@ GrantFlow is an onchain USDC grant and hackathon payout platform on Arc. Sponsor
 | Contract   | Chain        | Address                                       | Explorer |
 |------------|--------------|-----------------------------------------------|----------|
 | GrantFlowV4 (MAINNET, **active**) | Arc Mainnet | 0x41ffdab65fca60bda9beb455285d29ab753c3d2e | https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e |
-| GrantFlowV4 (testnet) | Arc Testnet  | 0x8a8d4e2378842d02690e247c9241842a30bbf7c4    | https://explorer.testnet.arc.io/address/0x8a8d4e2378842d02690e247c9241842a30bbf7c4 |
+| GrantFlowV4 (testnet, **active**) | Arc Testnet  | 0x0754d3359f18be2079c6d3cea29658b464cfe946    | https://explorer.testnet.arc.io/address/0x0754d3359f18be2079c6d3cea29658b464cfe946 |
+| GrantFlowV4 (testnet, old — wrong owner) | Arc Testnet  | 0x8a8d4e2378842d02690e247c9241842a30bbf7c4    | retired |
 | GrantFlow v3 (MAINNET, legacy) | Arc Mainnet  | 0x7c2866a62e6ad73e15e243d4341219eb3995fe7d    | https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d |
 | GrantFlow v3 (testnet, legacy) | Arc Testnet  | 0x3805f86f71b47480a2b31d563ce1620b490a841f    | https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f |
 
 V4 Mainnet deploy tx: 0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617
+V4 Testnet deploy tx: 0x13e62998225a0e55834ad5942946703c5d0118573f74f58a8ea38eb801e4e44f
+Note: Ownable2Step pending owner on testnet is 0xa3039A5… (platform deployer); call acceptOwnership() from 0x62628…3195 to complete the transfer.
 V3 Mainnet deploy tx: 0x15fa390fb616c79d891f8194618b5d9e56928402f920aa5bf21363d7ba596cc9
 V3 Mainnet deployed at block: 27461407
 
@@ -70,9 +73,34 @@ Owner (Ownable2Step, testnet): 0x5B12Ce46C7194aD57d143bC22847224047b1Ef42
 - Category enum: Hackathon (0), Bounty (1), Contest (2), Referral (3) — stored alongside an optional description string.
 - via_ir=true added to foundry.toml to fix stack-too-deep on 9-param createProgram.
 
+## i18n System (EN / VI)
+
+- Source of truth: `src/lib/i18n/en.ts` — 545 keys (as of current session)
+- Vietnamese translations split across `vi.part1.ts` through `vi.part4.ts`, merged in `vi.ts`
+- Barrel at `src/lib/i18n/index.ts` — exports `EN`, `VI`, `StringKey`, `Lang`, `translate()`
+- Hook: `src/hooks/useI18n.ts` — `useI18n()` returns `{ lang, setLang, t }` and sets `<html lang>`
+- Check: `bun run check-i18n` — confirms all EN keys exist in VI
+- Test: `bun run test:i18n` — 34 assertions, verifies key counts, sample translations, role labels
+- Key naming: dot-separated lowercase, e.g. `landing.hero.headline1`, `winners.claimed`
+- When adding new EN keys: always add matching VI keys before running checks
+- `translate(lang, key)` falls back to EN if VI key is missing at runtime (type-safe at compile time)
+
+## Network Switching (runtime)
+
+Users can switch between Arc Mainnet and Arc Testnet at runtime via the NetworkDropdown in the topbar. The selection is persisted in localStorage (`gf-network`). The build-time default is set by `VITE_CHAIN`.
+
+- `useNetworkStore` — React context holding `network`, `config`, `setNetwork`; `NETWORK_CONFIGS` static map
+- `useWrongNetwork` — compares wallet chainId vs selected network; `switchNetwork()` calls `wallet_switchEthereumChain` with `wallet_addEthereumChain` fallback
+- `WrongNetworkProvider` / `useDisableTx` — context so all tx buttons read a single `isWrong` boolean
+- `NetworkDropdown` — topbar chip with live block, TESTNET badge on testnet, dropdown to switch
+- `WrongNetworkBanner` — amber banner shown on app pages when wallet is on wrong chain
+
 ## Environment Variables
 
-- `VITE_GRANTFLOW_ADDRESS` — testnet GrantFlow address (set in .env after deploy)
-- `VITE_GRANTFLOW_ADDRESS_MAINNET` — mainnet GrantFlow address (set in .env for mainnet)
-- `VITE_CHAIN` — `testnet` (default) or `mainnet`
+- `VITE_GRANTFLOW_ADDRESS` — testnet GrantFlow v3 address (set in .env after deploy)
+- `VITE_GRANTFLOW_ADDRESS_MAINNET` — mainnet GrantFlow v3 address
+- `VITE_GRANTFLOW_V4_ADDRESS` — testnet GrantFlowV4 address (`0x8a8d4e2378842d02690e247c9241842a30bbf7c4`)
+- `VITE_GRANTFLOW_V4_ADDRESS_MAINNET` — mainnet GrantFlowV4 address (`0x41ffdab65fca60bda9beb455285d29ab753c3d2e`)
+- `VITE_CHAIN` — `testnet` (default) or `mainnet` (sets build-time default; overridden by localStorage at runtime)
+- `VITE_WALLETCONNECT_PROJECT_ID` — WalletConnect project ID (optional)
 - `RPC_PROXY_BASE_URL`, `RPC_PROXY_TOKEN`, `RPC_PROXY_CHAINS` — Arc Studio RPC proxy (optional outside Arc Studio)

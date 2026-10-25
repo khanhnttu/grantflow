@@ -1,11 +1,12 @@
 /**
  * useI18n — language context + translate helper.
  * Wrap the app root with <I18nProvider>; consume with useI18n().
+ * Setting lang also updates <html lang="..."> for accessibility/SEO.
  */
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { createElement } from 'react';
-import { translate, type Lang, type StringKey } from '@/lib/i18n';
+import { translate, type Lang, type StringKey } from '@/lib/i18n/index';
 
 interface I18nCtx {
   lang: Lang;
@@ -28,6 +29,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       return 'en';
     }
   });
+
+  // Keep <html lang> in sync with the chosen language
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l);

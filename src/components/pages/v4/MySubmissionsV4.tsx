@@ -3,7 +3,8 @@
  * Also shows pending claim if any.
  */
 import { Trophy, ExternalLink, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { useAccount, useChainId } from 'wagmi';
+import { useI18n } from '@/hooks/useI18n';
+import { useAccount } from 'wagmi';
 import { useState } from 'react';
 import {
   useProgramCount, useAllProgramsV4, useSubmissionCountV4,
@@ -11,20 +12,20 @@ import {
 } from '@/hooks/useGrantFlowV4';
 import {
   computePhase, usdcToDisplay, PHASE_LABELS, PHASE_COLORS,
-  shortAddr, parseOnchainErrorV4,
+  shortAddr,
 } from '@/lib/grantflowV4';
-
-const CHAIN_EXPLORER: Record<number, string> = {
-  5042002: 'https://explorer.testnet.arc.io',
-  5042:    'https://explorer.arc.io',
-};
+import { useNetworkStore } from '@/hooks/useNetworkStore';
+import { useDisableTx } from '@/components/NetworkUI';
+import { useTxRecovery, makeClaimPoller } from '@/hooks/useTxRecovery';
 
 interface Props { onSelect: (id: number) => void; }
 
 export function MySubmissionsV4({ onSelect }: Props) {
+  const { t } = useI18n();
   const { address: account } = useAccount();
-  const chainId = useChainId();
-  const explorer = CHAIN_EXPLORER[chainId] ?? CHAIN_EXPLORER[5042002];
+  const { config, appClient } = useNetworkStore();
+  const explorer = config.explorerBase;
+  const disableTx = useDisableTx();
 
   const [busy, setBusy]   = useState(false);
   const [txErr, setTxErr] = useState('');
@@ -35,13 +36,21 @@ export function MySubmissionsV4({ onSelect }: Props) {
   const { data: programs }  = useAllProgramsV4(count);
   const { data: pending }   = usePendingClaim();
   const { claim }           = useV4Write();
+  const { sendWithRecovery } = useTxRecovery();
 
   const handleClaim = async () => {
+    if (!account) return;
     setBusy(true); setTxErr(''); setTxOk('');
-    try {
-      await claim();
-      setTxOk('USDC claimed!');
-    } catch (e) { setTxErr(parseOnchainErrorV4(e)); }
+    const prevPending = pending ?? 0n;
+    await sendWithRecovery(
+      () => claim(),
+      makeClaimPoller(appClient, config.v4Address, account, prevPending),
+      {
+        setStatus: m => { if (m) setTxOk(m); },
+        setError:  m => setTxErr(m),
+        onSuccess: () => setTxOk('USDC claimed!'),
+      },
+    );
     setBusy(false);
   };
 
@@ -57,8 +66,8 @@ export function MySubmissionsV4({ onSelect }: Props) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>My submissions</h1>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>All programs you have submitted to</p>
+        <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>{t('mySubs.title')}</h1>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{t('mySubs.sub')}</p>
       </div>
 
       {/* Pending claim */}
@@ -66,13 +75,14 @@ export function MySubmissionsV4({ onSelect }: Props) {
         <div className="flex items-center justify-between px-4 py-3 rounded-xl"
           style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
           <div>
-            <p className="text-sm font-semibold text-emerald-400">Prize available!</p>
-            <p className="text-xs text-emerald-400/70">{usdcToDisplay(pending ?? 0n)} USDC pending claim</p>
+            <p className="text-sm font-semibold text-emerald-400">{t('mySubs.prizeAvail')}</p>
+            <p className="text-xs text-emerald-400/70">{usdcToDisplay(pending ?? 0n)} {t('mySubs.usdcPending')}</p>
           </div>
-          <button onClick={() => void handleClaim()} disabled={busy}
+          <button onClick={() => void handleClaim()} disabled={busy || disableTx}
             className="px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
-            style={{ background: '#10b981', color: '#fff' }}>
-            {busy ? 'Claiming…' : 'Claim USDC'}
+            style={{ background: '#10b981', color: '#fff' }}
+            title={disableTx ? 'Switch to the correct network first' : undefined}>
+            {busy ? t('mySubs.claiming') : t('mySubs.claim')}
           </button>
         </div>
       )}

@@ -4,22 +4,12 @@
 import { ExternalLink } from 'lucide-react';
 import { useI18n } from '@/hooks/useI18n';
 import type { AppPage } from '@/components/AppShell';
+import { LogoMark } from '@/components/BrandLogo';
 
 interface FooterProps {
   onNav: (p: AppPage) => void;
 }
 
-function LogoMark({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden>
-      <rect width="28" height="28" rx="7" fill="#4f9ef8" />
-      <path
-        d="M14 6C9.58 6 6 9.58 6 14s3.58 8 8 8c2.13 0 4.07-.83 5.52-2.19l-1.42-1.42A5.96 5.96 0 0 1 14 20a6 6 0 0 1 0-12c2.03 0 3.82 1.01 4.9 2.56H16v2h6V7h-2v1.97A7.97 7.97 0 0 0 14 6Zm1 7h-2v2h2v-2Z"
-        fill="#fff"
-      />
-    </svg>
-  );
-}
 
 interface NavLinkProps {
   page?: AppPage;
@@ -55,7 +45,7 @@ export function AppFooter({ onNav }: FooterProps) {
           {/* Brand */}
           <div className="col-span-2 sm:col-span-1">
             <div className="flex items-center gap-2 mb-3">
-              <LogoMark />
+              <LogoMark size={22} variant="light" />
               <span className="font-bold text-sm" style={{ color: 'var(--text)' }}>GrantFlow</span>
             </div>
             <p className="text-xs leading-relaxed opacity-70" style={{ color: 'var(--text-muted)' }}>

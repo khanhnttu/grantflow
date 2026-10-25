@@ -385,33 +385,57 @@ export function shortAddr(addr: string): string {
 
 export function parseOnchainErrorV4(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
+  const low = msg.toLowerCase();
+
+  // ── Wallet-level errors (checked first, before contract errors) ───────────
+  if (low.includes('user rejected') || low.includes('user denied') || low.includes('rejected the request'))
+    return 'Transaction rejected by wallet.';
+  if (low.includes('insufficient funds') || low.includes('insufficient balance'))
+    return 'Insufficient USDC balance to cover this transaction.';
+  if (low.includes('could not be found') || low.includes('does not exist') ||
+      low.includes('contract not deployed') || low.includes('0x reverted'))
+    return 'Contract not found on this network. Make sure your wallet is on the right network.';
+  if (low.includes('already known') || low.includes('replacement transaction underpriced'))
+    return 'This transaction is already pending. Please wait for it to confirm.';
+  if (low.includes('nonce too low'))
+    return 'Transaction nonce mismatch. Try resetting your wallet nonce.';
+  if (low.includes('gas required exceeds allowance') || low.includes('out of gas'))
+    return 'Transaction ran out of gas. Try increasing the gas limit in your wallet.';
+  if (low.includes('wrong network') || low.includes('chainid mismatch'))
+    return 'Wallet is on the wrong network. Switch to the correct chain and try again.';
+
+  // ── Contract custom errors ────────────────────────────────────────────────
   const map: Record<string, string> = {
-    NotSubmissionPhase:     'Submissions are closed.',
-    NotJudgingPhase:        'Voting is not open.',
-    AlreadyFinalized:       'Program is already finalized.',
-    NotAfterJudgingDeadline:'Judging deadline has not passed yet.',
-    AlreadySubmitted:       'You have already submitted to this program.',
-    ConflictOfInterest:     'Sponsors and judges cannot submit.',
-    WrongProgramType:       'Use address(0) for Open Bounty submissions.',
-    InvalidProjectContract: 'Contract address has no deployed code.',
-    TooManySubmissions:     'Submission limit reached.',
-    NotJudge:               'You are not a judge for this program.',
-    AlreadyVoted:           'You already voted on this submission.',
-    NothingToClaim:         'No prizes to claim.',
-    NothingToReclaim:       'Nothing to reclaim (fully awarded or already reclaimed).',
-    NotSponsor:             'Only the sponsor can do this.',
-    NotFinalized:           'Finalize the program first.',
-    AlreadyCancelled:       'Program is already cancelled.',
-    SubmissionsExist:       'Cannot cancel after submissions exist.',
-    FeeTooHigh:             'Fee exceeds the 5% cap.',
-    ZeroAddress:            'Address cannot be zero.',
-    InvalidParams:          'Invalid parameters.',
-    User_rejected:          'Transaction rejected.',
+    NotSubmissionPhase:      'Submissions are closed for this program.',
+    NotJudgingPhase:         'Voting is not open yet.',
+    AlreadyFinalized:        'Program is already finalized.',
+    NotAfterJudgingDeadline: 'Judging deadline has not passed yet.',
+    AlreadySubmitted:        'You have already submitted to this program.',
+    ConflictOfInterest:      'Sponsors and judges cannot submit to their own program.',
+    WrongProgramType:        'Use address(0) as project contract for Open Bounty submissions.',
+    InvalidProjectContract:  'Contract address has no deployed code at that address.',
+    TooManySubmissions:      'Submission limit reached for this program.',
+    NotJudge:                'You are not a judge for this program.',
+    AlreadyVoted:            'You already voted on this submission.',
+    NothingToClaim:          'No prizes to claim — check your submissions.',
+    NothingToReclaim:        'Nothing to reclaim (all prizes awarded or already reclaimed).',
+    NotSponsor:              'Only the program sponsor can do this.',
+    NotFinalized:            'Finalize the program before claiming.',
+    AlreadyCancelled:        'This program is already cancelled.',
+    SubmissionsExist:        'Cannot cancel after submissions have been made.',
+    FeeTooHigh:              'Fee exceeds the 5% platform cap.',
+    ZeroAddress:             'Address cannot be zero.',
+    InvalidParams:           'Invalid parameters (check deadlines and prize amounts).',
+    ProgramNotFound:         'Program not found.',
+    SubmissionNotFound:      'Submission not found.',
   };
   for (const [key, label] of Object.entries(map)) {
     if (msg.includes(key)) return label;
   }
-  if (msg.includes('rejected')) return 'Transaction rejected.';
-  if (msg.includes('insufficient')) return 'Insufficient USDC balance or allowance.';
-  return 'Transaction failed. Check your wallet and try again.';
+
+  // ── Generic fallbacks ─────────────────────────────────────────────────────
+  if (low.includes('rejected')) return 'Transaction rejected.';
+  if (low.includes('insufficient')) return 'Insufficient USDC balance or allowance.';
+  if (low.includes('revert')) return 'Transaction reverted. Check program state and try again.';
+  return 'Transaction failed. Check your wallet connection and try again.';
 }

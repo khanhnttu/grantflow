@@ -1,4 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="8" fill="#1061a6"/>
-  <text x="16" y="23" font-family="'Space Grotesk', system-ui, sans-serif" font-size="20" font-weight="700" fill="white" text-anchor="middle">G</text>
+  <!-- GrantFlow logo mark: rounded-square badge, flowing path + arrowhead + star -->
+  <rect width="32" height="32" rx="8" fill="#1555A0"/>
+  <!-- Flowing ribbon path -->
+  <path d="M5.5 22 C8 18, 11 14, 16 11 L19 9.5" stroke="#fff" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+  <!-- Arrowhead -->
+  <polygon points="19,9.5 14.5,11.5 17,14.5" fill="#fff"/>
+  <!-- 4-point star (prize/payout) at (24,8) -->
+  <path d="M24,3.3 L25.2,6.8 L28.7,8 L25.2,9.2 L24,12.7 L22.8,9.2 L19.3,8 L22.8,6.8 Z" fill="#fff"/>
 </svg>

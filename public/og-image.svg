@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0a1628"/>
+      <stop offset="100%" stop-color="#0d2241"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1555A0" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#1555A0" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Grid pattern -->
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M60 0 L0 0 0 60" fill="none" stroke="#ffffff" stroke-width="0.4" stroke-opacity="0.06"/>
+    </pattern>
+  </defs>
+
+  <!-- BG -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Grid -->
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <!-- Glow blob top-left -->
+  <ellipse cx="200" cy="150" rx="380" ry="280" fill="url(#glow)" opacity="0.7"/>
+
+  <!-- Logo badge (large, 120×120) -->
+  <rect x="90" y="210" width="120" height="120" rx="30" fill="#1555A0"/>
+  <!-- Flowing ribbon -->
+  <path d="M107 297 C115 279, 127 262, 148 251 L161 244" stroke="#fff" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <!-- Arrowhead -->
+  <polygon points="161,244 143,252 150,264" fill="#fff"/>
+  <!-- 4-point star at (187,228) -->
+  <path d="M187,215 L191,225 L201,228 L191,231 L187,241 L183,231 L173,228 L183,225 Z" fill="#fff"/>
+
+  <!-- Wordmark -->
+  <text x="234" y="283" font-family="'Space Grotesk', 'DM Sans', system-ui, sans-serif" font-weight="700" font-size="68" letter-spacing="-2" fill="#FFFFFF">GrantFlow</text>
+
+  <!-- Divider -->
+  <line x1="90" y1="360" x2="1110" y2="360" stroke="#1555A0" stroke-width="1" stroke-opacity="0.5"/>
+
+  <!-- Headline -->
+  <text x="90" y="430" font-family="'DM Sans', system-ui, sans-serif" font-weight="600" font-size="40" fill="#FFFFFF" opacity="0.95">Grant &amp; bounty payouts, fully onchain</text>
+
+  <!-- Sub-line: USDC on Arc -->
+  <text x="90" y="488" font-family="'DM Sans', system-ui, sans-serif" font-weight="400" font-size="28" fill="#91C6FF" opacity="0.9">USDC on Arc  ·  No manual wires  ·  No delays</text>
+
+  <!-- Chain badge pill -->
+  <rect x="90" y="530" width="160" height="38" rx="19" fill="#1555A0" opacity="0.7"/>
+  <text x="170" y="555" font-family="system-ui, sans-serif" font-size="17" font-weight="600" fill="#fff" text-anchor="middle">Arc Testnet</text>
+
+  <!-- Right decoration: subtle arc shapes -->
+  <circle cx="980" cy="315" r="200" fill="none" stroke="#1555A0" stroke-width="1.5" opacity="0.3"/>
+  <circle cx="980" cy="315" r="140" fill="none" stroke="#1555A0" stroke-width="1" opacity="0.25"/>
+  <circle cx="980" cy="315" r="80" fill="none" stroke="#91C6FF" stroke-width="1" opacity="0.2"/>
+  <!-- Right star -->
+  <path d="M980,240 L987,265 L1012,265 L991,280 L999,305 L980,290 L961,305 L969,280 L948,265 L973,265 Z" fill="#1555A0" opacity="0.35"/>
+</svg>

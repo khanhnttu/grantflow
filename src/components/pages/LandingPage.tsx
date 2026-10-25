@@ -1,36 +1,70 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowRight, CheckCircle2, ChevronDown, ChevronUp, Copy, ExternalLink,
-  Github, Lock, RefreshCw, Shield, Zap,
+  Github, Lock, Menu, RefreshCw, Shield, Star, Trophy, Users, X, Zap,
 } from 'lucide-react';
+import { LogoMark } from '@/components/BrandLogo';
 import { TokenUSDC } from '@web3icons/react';
-import { GRANTFLOW_ADDRESS, addrUrl } from '@/lib/chainConfig';
+import { GRANTFLOW_V4_ADDRESS, addrUrl, ACTIVE_CHAIN_ID, GRANTFLOW_ADDRESS } from '@/lib/chainConfig';
+import { useI18n } from '@/hooks/useI18n';
+import { useReadContracts, usePublicClient } from 'wagmi';
+import { GRANTFLOW_V4_ABI, getV4Address } from '@/lib/grantflowV4';
+import { GRANTFLOW_ABI } from '@/lib/grantflow';
+import type { AppPage } from '@/components/AppShell';
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
+const USDC_6 = 1_000_000n;
 
+// ── Shared layout helpers ─────────────────────────────────────────────────────
+
+/** Full-width section band with optional alternate background */
+function SectionBand({
+  children,
+  alt,
+  id,
+  className = '',
+}: {
+  children: React.ReactNode;
+  alt?: boolean;
+  id?: string;
+  className?: string;
+}) {
+  return (
+    <section
+      id={id}
+      className={`py-16 sm:py-20 lg:py-24 ${className}`}
+      style={{ background: alt ? 'var(--bg-alt)' : 'var(--bg)' }}
+    >
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+/** Eyebrow label — dark enough for AA contrast (4.5:1) */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--accent)' }}>
+    <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>
       {children}
     </p>
   );
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+function SectionHeading({ children, center }: { children: React.ReactNode; center?: boolean }) {
   return (
-    <h2 className="display text-2xl sm:text-3xl font-bold leading-snug" style={{ color: 'var(--ink)' }}>
+    <h2
+      className={`display text-2xl sm:text-3xl font-bold leading-snug${center ? ' text-center' : ''}`}
+      style={{ color: 'var(--ink)' }}
+    >
       {children}
     </h2>
   );
 }
 
-function Divider() {
-  return <div className="my-16 border-t" style={{ borderColor: 'var(--border)' }} />;
-}
+// ── Minor components ──────────────────────────────────────────────────────────
 
-// ── CopyButton ───────────────────────────────────────────────────────────────
-
-function CopyButton({ text }: { text: string }) {
+function CopyButton({ text, copyLabel, copiedLabel }: { text: string; copyLabel: string; copiedLabel: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
     void navigator.clipboard.writeText(text).then(() => {
@@ -41,29 +75,30 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-all"
-      style={{ background: copied ? 'rgba(26,128,71,0.1)' : 'var(--surface-muted)', color: copied ? 'var(--success)' : 'var(--ink-2)', border: '1px solid var(--border)' }}
-      title="Copy address"
+      className="flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium transition-all focus-visible:outline-2 focus-visible:outline-offset-2"
+      style={{
+        background: copied ? 'rgba(26,128,71,0.1)' : 'var(--surface-muted)',
+        color: copied ? 'var(--success)' : 'var(--ink-2)',
+        border: '1px solid var(--border)',
+        outlineColor: 'var(--focus)',
+      }}
+      aria-label={copied ? copiedLabel : copyLabel}
     >
       <Copy className="size-3" />
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? copiedLabel : copyLabel}
     </button>
   );
 }
 
-// ── FAQ item ──────────────────────────────────────────────────────────────────
-
 function FAQItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ border: '1px solid var(--border)' }}
-    >
+    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
-        style={{ background: 'var(--surface)' }}
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left focus-visible:outline-2 focus-visible:outline-offset-2 min-h-[44px]"
+        style={{ background: 'var(--surface)', outlineColor: 'var(--focus)' }}
+        aria-expanded={open}
       >
         <span className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>{q}</span>
         {open
@@ -79,447 +114,564 @@ function FAQItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-// ── LandingPage ──────────────────────────────────────────────────────────────
+// ── Live stats hook ───────────────────────────────────────────────────────────
 
-interface LandingPageProps {
-  onNav: (page: string) => void;
-
-
+interface LiveStats {
+  totalPrograms: number | null;
+  usdcLocked: bigint | null;
+  usdcPaidOut: bigint | null;
 }
 
-export function LandingPage({ onNav }: LandingPageProps) {
-  const onLaunch = () => onNav('sponsor');
-  const onBrowse = () => onNav('explore');
-  return (
-    <div className="space-y-0 pb-16">
+function useLiveStats(): LiveStats {
+  const v4Addr = getV4Address(ACTIVE_CHAIN_ID);
+  const client = usePublicClient({ chainId: ACTIVE_CHAIN_ID });
+  const [paidOut, setPaidOut] = useState<bigint | null>(null);
 
-      {/* ── Hero ────────────────────────────────────────────────────── */}
-      <section className="py-16 sm:py-24 text-center space-y-6">
-        {/* Logo mark */}
-        <div className="flex justify-center mb-2">
-          <div
-            className="flex size-16 items-center justify-center rounded-3xl shadow-md"
-            style={{ background: 'var(--accent)' }}
+  // Batch: v4 programCount + v3 programCount + USDC balance of v4 contract
+  const { data } = useReadContracts({
+    contracts: [
+      { address: v4Addr, abi: GRANTFLOW_V4_ABI, functionName: 'programCount' as const },
+      { address: GRANTFLOW_ADDRESS, abi: GRANTFLOW_ABI, functionName: 'programCount' as const },
+      {
+        address: '0x3600000000000000000000000000000000000000',
+        abi: [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }] as const,
+        functionName: 'balanceOf',
+        args: [v4Addr],
+      },
+    ],
+  });
+
+  const v4Count   = data?.[0]?.status === 'success' ? Number(data[0].result) : null;
+  const v3Count   = data?.[1]?.status === 'success' ? Number(data[1].result) : null;
+  const locked    = data?.[2]?.status === 'success' ? (data[2].result) : null;
+  const total     = v4Count !== null && v3Count !== null ? v4Count + v3Count : null;
+
+  // Aggregate Claimed events for total paid out (both v3 + v4)
+  useEffect(() => {
+    if (!client) return;
+    let cancelled = false;
+
+    const CLAIMED_V4 = {
+      type: 'event' as const,
+      name: 'Claimed',
+      inputs: [
+        { indexed: true as const, name: 'recipient', type: 'address' as const },
+        { indexed: false as const, name: 'amount', type: 'uint256' as const },
+      ],
+    };
+
+    void Promise.all([
+      client.getLogs({ address: v4Addr, event: CLAIMED_V4, fromBlock: 'earliest', toBlock: 'latest' }).catch(() => []),
+    ]).then(([v4Logs]) => {
+      if (cancelled) return;
+      let sum = 0n;
+      for (const l of v4Logs) {
+        const a = (l.args as { amount?: bigint }).amount ?? 0n;
+        sum += a;
+      }
+      setPaidOut(sum);
+    });
+
+    return () => { cancelled = true; };
+  }, [client, v4Addr]);
+
+  return { totalPrograms: total, usdcLocked: locked, usdcPaidOut: paidOut };
+}
+
+function fmtUsdc(raw: bigint): string {
+  const n = Number(raw) / Number(USDC_6);
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
+  return `$${n.toFixed(2)}`;
+}
+
+// ── Landing nav (sticky, only on marketing layout) ────────────────────────────
+
+const NAV_LINKS = [
+  { id: 'how-it-works', key: 'landing.nav.hiw' as const },
+  { id: 'use-cases',    key: 'landing.nav.usecases' as const },
+  { id: 'fees',         key: 'landing.nav.fees' as const },
+  { id: 'security',     key: 'landing.nav.security' as const },
+  { id: 'faq',          key: 'landing.nav.faq' as const },
+] as const;
+
+function LandingNav({
+  onNav,
+}: {
+  onNav: (page: AppPage) => void;
+}) {
+  const { t } = useI18n();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeId, setActiveId] = useState('');
+
+  // Track scroll position to mark active section
+  useEffect(() => {
+    const ids = NAV_LINKS.map(l => l.id);
+    const handler = () => {
+      const scrollY = window.scrollY + 80;
+      let current = '';
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && el.offsetTop <= scrollY) current = id;
+      }
+      setActiveId(current);
+    };
+    window.addEventListener('scroll', handler, { passive: true });
+    handler();
+    return () => window.removeEventListener('scroll', handler);
+  }, []);
+
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setMobileOpen(false);
+  };
+
+  return (
+    <nav
+      className="sticky top-0 z-40 w-full"
+      style={{
+        background: 'var(--topbar-bg)',
+        borderBottom: '1px solid var(--topbar-border)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }}
+      aria-label="Landing page navigation"
+    >
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-4">
+        {/* Scroll links — desktop */}
+        <ul className="hidden md:flex items-center gap-1 flex-1" role="list">
+          {NAV_LINKS.map(({ id, key }) => {
+            const active = activeId === id;
+            return (
+              <li key={id}>
+                <button
+                  onClick={() => scrollTo(id)}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 min-h-[36px]"
+                  style={{
+                    color: active ? 'var(--accent)' : 'var(--muted)',
+                    background: active ? 'var(--surface-muted)' : 'transparent',
+                    fontWeight: active ? 600 : 400,
+                    outlineColor: 'var(--focus)',
+                  }}
+                >
+                  {t(key)}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* Right side: Explore + Developers + Launch app */}
+        <div className="hidden md:flex items-center gap-2 ml-auto">
+          <button
+            onClick={() => onNav('v4-explore')}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 min-h-[36px]"
+            style={{ color: 'var(--muted)', outlineColor: 'var(--focus)' }}
           >
-            <span className="display text-3xl font-bold text-white">G</span>
+            {t('landing.nav.explore')}
+          </button>
+          <button
+            onClick={() => onNav('developers')}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 min-h-[36px]"
+            style={{ color: 'var(--muted)', outlineColor: 'var(--focus)' }}
+          >
+            {t('landing.nav.developers')}
+          </button>
+          <button
+            onClick={() => onNav('v4-create')}
+            className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 min-h-[36px]"
+            style={{ background: 'var(--accent)', color: '#fff', outlineColor: 'var(--focus)' }}
+          >
+            {t('landing.nav.launch')} <ArrowRight className="size-3.5" />
+          </button>
+        </div>
+
+        {/* Mobile hamburger */}
+        <button
+          className="md:hidden ml-auto flex items-center justify-center rounded-lg p-2 focus-visible:outline-2 min-h-[44px] min-w-[44px]"
+          style={{ color: 'var(--ink)', outlineColor: 'var(--focus)' }}
+          onClick={() => setMobileOpen(v => !v)}
+          aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={mobileOpen}
+        >
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+
+      {/* Mobile dropdown */}
+      {mobileOpen && (
+        <div
+          className="md:hidden border-t"
+          style={{ background: 'var(--topbar-bg)', borderColor: 'var(--topbar-border)' }}
+        >
+          <div className="max-w-[1200px] mx-auto px-4 py-3 flex flex-col gap-1">
+            {NAV_LINKS.map(({ id, key }) => (
+              <button
+                key={id}
+                onClick={() => scrollTo(id)}
+                className="w-full text-left px-3 py-3 rounded-lg text-sm font-medium focus-visible:outline-2 min-h-[44px]"
+                style={{ color: 'var(--ink-2)', outlineColor: 'var(--focus)' }}
+              >
+                {t(key)}
+              </button>
+            ))}
+            <div className="border-t mt-1 pt-2" style={{ borderColor: 'var(--border)' }}>
+              <button
+                onClick={() => { onNav('v4-explore'); setMobileOpen(false); }}
+                className="w-full text-left px-3 py-3 rounded-lg text-sm font-medium min-h-[44px]"
+                style={{ color: 'var(--muted)' }}
+              >
+                {t('landing.nav.explore')}
+              </button>
+              <button
+                onClick={() => { onNav('v4-create'); setMobileOpen(false); }}
+                className="w-full flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-semibold min-h-[44px] mt-1"
+                style={{ background: 'var(--accent)', color: '#fff' }}
+              >
+                {t('landing.nav.launch')} <ArrowRight className="size-3.5" />
+              </button>
+            </div>
           </div>
         </div>
+      )}
+    </nav>
+  );
+}
 
-        <div className="space-y-4 max-w-2xl mx-auto">
-          <h1 className="display text-3xl sm:text-5xl font-bold leading-tight" style={{ color: 'var(--ink)' }}>
-            Grant &amp; bounty payouts,<br />
-            <span style={{ color: 'var(--accent)' }}>fully onchain.</span>
-          </h1>
-          <p className="text-base sm:text-lg leading-relaxed" style={{ color: 'var(--ink-2)' }}>
-            Sponsors lock a USDC prize pool in a smart contract. Reviewers vote.
-            Winners claim instantly — no manual bank wires, no delays, no trust required.
-          </p>
+// ── Stats strip ───────────────────────────────────────────────────────────────
+
+function StatsStrip() {
+  const { t } = useI18n();
+  const { totalPrograms, usdcLocked, usdcPaidOut } = useLiveStats();
+
+  const stats = [
+    { label: t('landing.stats.programs'), value: totalPrograms !== null ? totalPrograms.toString() : t('landing.stats.loading') },
+    { label: t('landing.stats.locked'),   value: usdcLocked !== null ? fmtUsdc(usdcLocked) : t('landing.stats.loading') },
+    { label: t('landing.stats.paidOut'),  value: usdcPaidOut !== null ? fmtUsdc(usdcPaidOut) : t('landing.stats.loading') },
+  ];
+
+  return (
+    <div
+      className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 py-4 mt-6 rounded-2xl"
+      style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)' }}
+      role="status"
+      aria-label="Live protocol statistics"
+    >
+      {stats.map(({ label, value }) => (
+        <div key={label} className="flex flex-col items-center">
+          <span className="display text-xl font-bold" style={{ color: 'var(--ink)' }}>{value}</span>
+          <span className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>{label}</span>
         </div>
+      ))}
+    </div>
+  );
+}
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-          <button
-            onClick={onLaunch}
-            className="flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold transition-all hover:opacity-90"
-            style={{ background: 'var(--accent)', color: 'white' }}
-          >
-            Launch a program
-            <ArrowRight className="size-4" />
-          </button>
-          <button
-            onClick={onBrowse}
-            className="flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold transition-all hover:bg-black/5"
-            style={{ border: '1.5px solid var(--border)', color: 'var(--ink-2)' }}
-          >
-            Browse programs
-          </button>
+// ── Main component ────────────────────────────────────────────────────────────
+
+export function LandingPage({ onNav }: { onNav: (page: string) => void }) {
+  const { t } = useI18n();
+  const onLaunch = () => onNav('v4-create');
+  const onBrowse = () => onNav('v4-explore');
+
+  const hiwSteps = [
+    { step: '01', title: t('landing.hiw.s1.title'), body: t('landing.hiw.s1.body'), icon: <TokenUSDC size={24} variant="branded" /> },
+    { step: '02', title: t('landing.hiw.s2.title'), body: t('landing.hiw.s2.body'), icon: <Lock className="size-6" style={{ color: 'var(--accent)' }} /> },
+    { step: '03', title: t('landing.hiw.s3.title'), body: t('landing.hiw.s3.body'), icon: <Star className="size-6" style={{ color: '#b47800' }} /> },
+    { step: '04', title: t('landing.hiw.s4.title'), body: t('landing.hiw.s4.body'), icon: <Trophy className="size-6" style={{ color: 'var(--success)' }} /> },
+    { step: '05', title: t('action.claim'), body: t('landing.why.f6.body'), icon: <Zap className="size-6" style={{ color: 'var(--accent)' }} /> },
+  ];
+
+  const useCases = [
+    { cat: t('landing.uc.hackathon.cat'), headline: t('landing.uc.hackathon.headline'), body: t('landing.uc.hackathon.body') },
+    { cat: t('landing.uc.bounty.cat'), headline: t('landing.uc.bounty.headline'), body: t('landing.uc.bounty.body') },
+    { cat: t('landing.uc.contest.cat'), headline: t('landing.uc.contest.headline'), body: t('landing.uc.contest.body') },
+    { cat: t('landing.uc.referral.cat'), headline: t('landing.uc.referral.headline'), body: t('landing.uc.referral.body') },
+  ];
+
+  const whyFeatures = [
+    { title: t('landing.why.f1.title'), body: t('landing.why.f1.body'), icon: <Lock className="size-5" /> },
+    { title: t('landing.why.f2.title'), body: t('landing.why.f2.body'), icon: <Shield className="size-5" /> },
+    { title: t('landing.why.f3.title'), body: t('landing.why.f3.body'), icon: <RefreshCw className="size-5" /> },
+    { title: t('landing.why.f4.title'), body: t('landing.why.f4.body'), icon: <Zap className="size-5" /> },
+    { title: t('landing.why.f5.title'), body: t('landing.why.f5.body'), icon: <TokenUSDC size={20} variant="branded" /> },
+    { title: t('landing.why.f6.title'), body: t('landing.why.f6.body'), icon: <Users className="size-5" /> },
+  ];
+
+  const securityIn = [
+    t('landing.security.s1'), t('landing.security.s2'), t('landing.security.s3'),
+    t('landing.security.s4'), t('landing.security.s5'), t('landing.security.s6'), t('landing.security.s7'),
+  ];
+  const securityDisclosures = [
+    t('landing.security.d1'), t('landing.security.d2'), t('landing.security.d3'), t('landing.security.d4'),
+  ];
+
+  const faqs = [
+    { q: t('landing.faq.q1'), a: t('landing.faq.a1') },
+    { q: t('landing.faq.q2'), a: t('landing.faq.a2') },
+    { q: t('landing.faq.q3'), a: t('landing.faq.a3') },
+    { q: t('landing.faq.q4'), a: t('landing.faq.a4') },
+    { q: t('landing.faq.q5'), a: t('landing.faq.a5') },
+    { q: t('landing.faq.q6'), a: t('landing.faq.a6') },
+  ];
+
+  return (
+    <div>
+
+      {/* ── Sticky landing nav ────────────────────────────────────────────────── */}
+      <LandingNav onNav={onNav} />
+
+      {/* ── 1. Hero ─────────────────────────────────────────────────────────── */}
+      <SectionBand>
+        <div className="text-center space-y-6 max-w-2xl mx-auto">
+          <div className="flex justify-center">
+            <LogoMark size={64} variant="light" />
+          </div>
+          <div className="space-y-4">
+            <h1 className="display text-3xl sm:text-5xl font-bold leading-tight" style={{ color: 'var(--ink)' }}>
+              {t('landing.hero.headline1')}<br />
+              <span style={{ color: 'var(--accent)' }}>{t('landing.hero.headline2')}</span>
+            </h1>
+            <p className="text-base sm:text-lg leading-relaxed" style={{ color: 'var(--ink-2)' }}>
+              {t('landing.hero.sub')}
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            <button
+              onClick={onLaunch}
+              className="flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold transition-all hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 min-h-[44px]"
+              style={{ background: 'var(--accent)', color: 'white', outlineColor: 'var(--focus)' }}
+            >
+              {t('landing.hero.cta.launch')} <ArrowRight className="size-4" />
+            </button>
+            <button
+              onClick={onBrowse}
+              className="flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold transition-all hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 min-h-[44px]"
+              style={{ border: '1.5px solid var(--border)', color: 'var(--ink-2)', outlineColor: 'var(--focus)' }}
+            >
+              {t('landing.hero.cta.browse')}
+            </button>
+          </div>
+          {/* Trust badges */}
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs" style={{ color: 'var(--muted)' }}>
+            {([
+              t('landing.hero.trust.locked'),
+              t('landing.hero.trust.tests'),
+              t('landing.hero.trust.oss'),
+              t('landing.hero.trust.arc'),
+            ] as string[]).map((s) => (
+              <span key={s} className="flex items-center gap-1.5">
+                <CheckCircle2 className="size-3.5" style={{ color: 'var(--success)' }} />
+                {s}
+              </span>
+            ))}
+          </div>
+          {/* Live stats strip — sits tightly under trust badges */}
+          <StatsStrip />
         </div>
+      </SectionBand>
 
-        {/* Trust bar */}
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-4 text-xs" style={{ color: 'var(--muted)' }}>
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="size-3.5" style={{ color: 'var(--success)' }} />
-            Funds locked upfront in smart contract
-          </span>
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="size-3.5" style={{ color: 'var(--success)' }} />
-            157 Foundry tests (v3 + v4)
-          </span>
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="size-3.5" style={{ color: 'var(--success)' }} />
-            Open-source on GitHub
-          </span>
-          <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="size-3.5" style={{ color: 'var(--success)' }} />
-            Arc Mainnet — USDC native gas
-          </span>
-        </div>
-      </section>
-
-      <Divider />
-
-      {/* ── How it works ─────────────────────────────────────────────── */}
-      <section>
+      {/* ── 2. How it works ─────────────────────────────────────────────────── */}
+      <SectionBand alt id="how-it-works">
         <div className="text-center mb-10">
-          <SectionLabel>How it works</SectionLabel>
-          <SectionHeading>Four steps. Fully onchain.</SectionHeading>
+          <SectionLabel>{t('landing.hiw.label')}</SectionLabel>
+          <SectionHeading center>{t('landing.hiw.heading')}</SectionHeading>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            {
-              step: '01',
-              title: 'Fund the pool',
-              body: 'A sponsor creates a program, sets prize amounts, slots, a deadline, and locks USDC into the contract. Funds are held by the smart contract — not by GrantFlow.',
-              icon: <TokenUSDC size={24} variant="branded" />,
-            },
-            {
-              step: '02',
-              title: 'Collect submissions',
-              body: 'Builders submit their project contract address (for Onchain Build programs) or a work link (for Open Bounty programs) before the deadline.',
-              icon: <Lock className="size-6" style={{ color: 'var(--accent)' }} />,
-            },
-            {
-              step: '03',
-              title: 'Reviewers approve',
-              body: 'Designated reviewers evaluate submissions and cast approval votes. A submission is eligible once it reaches the sponsor\'s threshold.',
-              icon: <CheckCircle2 className="size-6" style={{ color: 'var(--success)' }} />,
-            },
-            {
-              step: '04',
-              title: 'Winners claim USDC',
-              body: 'Approved winners call claim() directly on the contract. USDC lands in their wallet in the same transaction — no intermediary involved.',
-              icon: <Zap className="size-6" style={{ color: '#b47800' }} />,
-            },
-          ].map(({ step, title, body, icon }) => (
+        {/* Equal-height cards: grid + h-full on each card */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-stretch">
+          {hiwSteps.map(({ step, title, body, icon }) => (
             <div
               key={step}
-              className="rounded-3xl p-5 space-y-3 flex flex-col"
+              className="rounded-3xl p-6 flex flex-col h-full"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
             >
-              <div className="flex items-center justify-between">
-                <span
-                  className="display text-xs font-bold tracking-wider"
-                  style={{ color: 'var(--accent)', opacity: 0.5 }}
-                >
-                  {step}
-                </span>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-mono font-semibold opacity-40" style={{ color: 'var(--ink)' }}>{step}</span>
                 {icon}
               </div>
-              <h3 className="display text-base font-bold" style={{ color: 'var(--ink)' }}>{title}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-2)' }}>{body}</p>
+              <p className="text-sm font-semibold mb-2" style={{ color: 'var(--ink)' }}>{title}</p>
+              <p className="text-xs leading-relaxed flex-1" style={{ color: 'var(--ink-2)' }}>{body}</p>
             </div>
           ))}
         </div>
-      </section>
+      </SectionBand>
 
-      <Divider />
-
-      {/* ── Use cases ─────────────────────────────────────────────────── */}
-      <section>
+      {/* ── 3. Use cases ─────────────────────────────────────────────────────── */}
+      <SectionBand id="use-cases">
         <div className="text-center mb-10">
-          <SectionLabel>Use cases</SectionLabel>
-          <SectionHeading>Built for every kind of program</SectionHeading>
+          <SectionLabel>{t('landing.usecases.label')}</SectionLabel>
+          <SectionHeading center>{t('landing.usecases.heading')}</SectionHeading>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[
-            {
-              category: 'Hackathon',
-              headline: 'Onchain Build programs',
-              body: 'Require participants to deploy a smart contract. The contract address is stored as proof of work onchain. Only one submission per deployed contract.',
-              color: '#1061a6',
-              bg: 'rgba(16,97,166,0.06)',
-            },
-            {
-              category: 'Open Bounty',
-              headline: 'Open Bounty programs',
-              body: 'No contract required — perfect for design challenges, content bounties, referral programs, and any task where the deliverable is off-chain.',
-              color: '#1a7d47',
-              bg: 'rgba(26,125,71,0.06)',
-            },
-            {
-              category: 'Contest',
-              headline: 'Contests',
-              body: 'Run a competition with a fixed prize pool. Multiple winners each claim an equal share. Unused slots are returnable to the sponsor after the deadline.',
-              color: '#b47800',
-              bg: 'rgba(180,120,0,0.06)',
-            },
-            {
-              category: 'Referral',
-              headline: 'Referral rewards',
-              body: 'Pay out a fixed USDC amount for each valid referral. Reviewers verify each submission. One reward per wallet address per program.',
-              color: '#7c3aed',
-              bg: 'rgba(124,58,237,0.06)',
-            },
-          ].map(({ category, headline, body, color, bg }) => (
+        {/* Equal-height cards with consistent 24px padding */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
+          {useCases.map(({ cat, headline, body }) => (
             <div
-              key={category}
-              className="rounded-3xl p-6 space-y-2"
-              style={{ background: bg, border: `1px solid ${color}22` }}
-            >
-              <span
-                className="inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                style={{ background: `${color}18`, color }}
-              >
-                {category}
-              </span>
-              <h3 className="display text-lg font-bold" style={{ color: 'var(--ink)' }}>{headline}</h3>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-2)' }}>{body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <Divider />
-
-      {/* ── Why onchain ───────────────────────────────────────────────── */}
-      <section>
-        <div className="text-center mb-10">
-          <SectionLabel>Why onchain</SectionLabel>
-          <SectionHeading>No trust in the operator required</SectionHeading>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            {
-              title: 'Funds locked upfront',
-              body: 'USDC is transferred into the contract when a program is created. GrantFlow never holds your funds — the contract does.',
-            },
-            {
-              title: 'Transparent payouts',
-              body: 'Every approval vote and every claim is a public transaction. Anyone can verify the payout trail on the Arc explorer.',
-            },
-            {
-              title: 'Unused funds returned',
-              body: 'If a program ends with unclaimed slots, the sponsor can reclaim the remaining USDC after the deadline. Nothing is locked permanently.',
-            },
-            {
-              title: 'Sub-second finality',
-              body: 'Arc confirms transactions in under a second. Winners see USDC in their wallet almost instantly after calling claim().',
-            },
-            {
-              title: 'Gas paid in USDC',
-              body: 'Arc\'s native gas token is USDC. Sponsors and builders never need to hold ETH or any other volatile gas token.',
-            },
-            {
-              title: 'Pull-claim, not push-pay',
-              body: 'Winners initiate their own payout. This pattern eliminates the risk of a single sponsor revert blocking all other winners.',
-            },
-          ].map(({ title, body }) => (
-            <div
-              key={title}
-              className="rounded-2xl p-5 space-y-2"
+              key={cat}
+              className="rounded-3xl p-6 flex flex-col h-full"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
             >
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 flex-shrink-0" style={{ color: 'var(--success)' }} />
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>{title}</h3>
-              </div>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--ink-2)' }}>{body}</p>
+              {/* Category pill — aligned with title at same 0px left (p-6 handles padding) */}
+              <span
+                className="inline-flex self-start text-xs font-bold px-2.5 py-1 rounded-full mb-3"
+                style={{
+                  background: 'rgba(18, 82, 163, 0.10)',
+                  color: 'var(--accent)',
+                  border: '1px solid rgba(18,82,163,0.15)',
+                }}
+              >
+                {cat}
+              </span>
+              <p className="text-base font-semibold mb-2" style={{ color: 'var(--ink)' }}>{headline}</p>
+              <p className="text-sm leading-relaxed flex-1" style={{ color: 'var(--ink-2)' }}>{body}</p>
             </div>
           ))}
         </div>
-      </section>
+      </SectionBand>
 
-      <Divider />
-
-      {/* ── Fees ──────────────────────────────────────────────────────── */}
-      <section>
+      {/* ── 4. Why onchain ───────────────────────────────────────────────────── */}
+      <SectionBand alt>
         <div className="text-center mb-10">
-          <SectionLabel>Fees</SectionLabel>
-          <SectionHeading>Simple, transparent, capped</SectionHeading>
+          <SectionLabel>{t('landing.why.label')}</SectionLabel>
+          <SectionHeading center>{t('landing.why.heading')}</SectionHeading>
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {whyFeatures.map(({ title, body, icon }) => (
+            <div key={title} className="rounded-3xl p-6 space-y-3" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div
+                className="flex size-9 items-center justify-center rounded-2xl"
+                style={{ background: 'rgba(18, 82, 163, 0.10)', color: 'var(--accent)' }}
+              >
+                {icon}
+              </div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--ink)' }}>{title}</p>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--ink-2)' }}>{body}</p>
+            </div>
+          ))}
+        </div>
+      </SectionBand>
 
-        <div className="max-w-2xl mx-auto space-y-4">
-          <div
-            className="rounded-3xl p-6 space-y-4"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="display text-4xl font-bold" style={{ color: 'var(--ink)' }}>1%</p>
-                <p className="text-sm mt-1" style={{ color: 'var(--ink-2)' }}>
-                  Platform fee charged once at program creation.
+      {/* ── 5. Fees ──────────────────────────────────────────────────────────── */}
+      <SectionBand id="fees">
+        {/* 2-column, items-start: both columns start at the same top edge */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          {/* Left: eyebrow + heading + big % */}
+          <div className="space-y-4">
+            <div>
+              <SectionLabel>{t('landing.fees.label')}</SectionLabel>
+              <SectionHeading>{t('landing.fees.heading')}</SectionHeading>
+            </div>
+            <div className="flex items-end gap-3 mt-2">
+              <span className="display text-6xl font-bold" style={{ color: 'var(--accent)' }}>{t('landing.fees.pct')}</span>
+              <div className="pb-2">
+                <p className="text-sm font-medium" style={{ color: 'var(--ink)' }}>{t('landing.fees.sub')}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--ink-2)' }}>
+                  {t('landing.fees.cap.label')}: <strong>{t('landing.fees.cap.value')}</strong>
                 </p>
               </div>
-              <div
-                className="rounded-2xl px-4 py-2 text-center flex-shrink-0"
-                style={{ background: 'rgba(16,97,166,0.08)' }}
-              >
-                <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>Hard cap</p>
-                <p className="display text-2xl font-bold" style={{ color: 'var(--ink)' }}>5%</p>
+            </div>
+          </div>
+          {/* Right: bullet list, aligned to top of left column */}
+          <ul className="space-y-3 pt-0">
+            {([
+              t('landing.fees.b1'), t('landing.fees.b2'), t('landing.fees.b3'),
+              t('landing.fees.b4'), t('landing.fees.b5'),
+            ] as string[]).map((b) => (
+              <li key={b} className="flex items-start gap-2.5 text-sm" style={{ color: 'var(--ink-2)' }}>
+                <CheckCircle2 className="size-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--success)' }} />
+                {b}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </SectionBand>
+
+      {/* ── 6. Security ──────────────────────────────────────────────────────── */}
+      <SectionBand alt id="security">
+        {/* 2-column, items-start: both columns start at the same top edge */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          {/* Left: eyebrow + heading + checklist */}
+          <div>
+            <SectionLabel>{t('landing.security.label')}</SectionLabel>
+            <SectionHeading>{t('landing.security.heading')}</SectionHeading>
+            <p className="text-sm font-semibold mt-6 mb-3" style={{ color: 'var(--ink)' }}>{t('landing.security.inplace')}</p>
+            <ul className="space-y-2.5">
+              {securityIn.map((s) => (
+                <li key={s} className="flex items-start gap-2 text-sm" style={{ color: 'var(--ink-2)' }}>
+                  <CheckCircle2 className="size-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--success)' }} />
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {/* Right: disclosure card + contract card */}
+          <div className="space-y-4">
+            <div className="rounded-2xl p-5 space-y-3" style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}>
+              <p className="text-sm font-semibold" style={{ color: '#b91c1c' }}>{t('landing.security.disclosure')}</p>
+              <ul className="space-y-2">
+                {securityDisclosures.map((d) => (
+                  <li key={d} className="text-xs leading-relaxed" style={{ color: 'var(--ink-2)' }}>• {d}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl p-4 space-y-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <p className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>{t('landing.security.contract.label')}</p>
+              <code className="text-xs font-mono break-all" style={{ color: 'var(--ink-2)' }}>{GRANTFLOW_V4_ADDRESS}</code>
+              <div className="flex items-center gap-2 pt-1 flex-wrap">
+                <a
+                  href={addrUrl(GRANTFLOW_V4_ADDRESS)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-1"
+                  style={{ color: 'var(--accent)', outlineColor: 'var(--focus)' }}
+                >
+                  <ExternalLink className="size-3" />{t('landing.security.explorer')}
+                </a>
+                <a
+                  href="https://github.com/khanhnttu/grantflow"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-1"
+                  style={{ color: 'var(--accent)', outlineColor: 'var(--focus)' }}
+                >
+                  <Github className="size-3" />{t('landing.security.source')}
+                </a>
+                <CopyButton text={GRANTFLOW_V4_ADDRESS} copyLabel={t('landing.security.copy')} copiedLabel={t('landing.security.copied')} />
               </div>
             </div>
-
-            <div className="space-y-2 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-              {[
-                'Fees are collected in USDC at program creation — a single transaction',
-                'The fee never enters the prize pool; prize math is always fee-free',
-                'Unused prize funds reclaimed by the sponsor are never subject to additional fees',
-                'Fee rate and recipient are publicly readable on the contract',
-                'The hard cap of 5% is enforced in the contract and cannot be overridden',
-              ].map((item) => (
-                <div key={item} className="flex items-start gap-2">
-                  <CheckCircle2 className="size-3.5 mt-0.5 flex-shrink-0" style={{ color: 'var(--success)' }} />
-                  <p className="text-sm" style={{ color: 'var(--ink-2)' }}>{item}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
-      </section>
+      </SectionBand>
 
-      <Divider />
-
-      {/* ── Security ──────────────────────────────────────────────────── */}
-      <section>
-        <div className="text-center mb-10">
-          <SectionLabel>Security</SectionLabel>
-          <SectionHeading>What we have done — and what we have not</SectionHeading>
-        </div>
-
-        <div className="max-w-2xl mx-auto space-y-4">
-          {/* What we have */}
-          <div
-            className="rounded-3xl p-6 space-y-3"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-          >
-            <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--success)' }}>
-              <Shield className="size-4" />
-              What is in place
-            </h3>
-            <div className="space-y-2">
-              {[
-                '157 Foundry tests (89 v3 + 68 v4) — happy paths, reverts, fuzz over fee math, both program modes, ranked prizes, and contest phases',
-                'Automated security review and functional review by Arc Studio on every contract change',
-                'OpenZeppelin SafeERC20 (safe transfer wrappers), ReentrancyGuard, and Ownable2Step',
-                'Pull-claim payout pattern — winners call claim() themselves; no push loop that can revert-lock',
-                'Post-deadline approval guard — reviewers cannot approve after the deadline passes',
-                'Fee isolation — fees are structurally separated from prize pools at the storage level',
-                'Contract source is fully open-source and verifiable on GitHub',
-              ].map((item) => (
-                <div key={item} className="flex items-start gap-2">
-                  <CheckCircle2 className="size-3.5 mt-0.5 flex-shrink-0" style={{ color: 'var(--success)' }} />
-                  <p className="text-sm" style={{ color: 'var(--ink-2)' }}>{item}</p>
-                </div>
-              ))}
-            </div>
+      {/* ── 7. FAQ ───────────────────────────────────────────────────────────── */}
+      <SectionBand id="faq">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-10">
+            <SectionLabel>{t('landing.faq.label')}</SectionLabel>
+            <SectionHeading center>{t('landing.faq.heading')}</SectionHeading>
           </div>
-
-          {/* Honest disclosure */}
-          <div
-            className="rounded-3xl p-6 space-y-3"
-            style={{ background: 'rgba(180,120,0,0.06)', border: '1px solid rgba(180,120,0,0.25)' }}
-          >
-            <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: '#b47800' }}>
-              <RefreshCw className="size-4" />
-              Honest disclosure
-            </h3>
-            <div className="space-y-2">
-              {[
-                'This contract has NOT been audited by an independent third-party security firm.',
-                'Use small amounts. Do not lock funds you cannot afford to lose.',
-                'The contract is not upgradeable. A bug cannot be patched without redeploying.',
-                'Arc Mainnet is a production network. Transactions are irreversible.',
-              ].map((item) => (
-                <div key={item} className="flex items-start gap-2">
-                  <span className="text-sm mt-0.5 flex-shrink-0" style={{ color: '#b47800' }}>!</span>
-                  <p className="text-sm font-medium" style={{ color: '#92580a' }}>{item}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Contract address */}
-          <div
-            className="rounded-2xl px-5 py-4 space-y-2"
-            style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)' }}
-          >
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-              Verified contract — Arc Mainnet
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <code className="mono text-xs break-all" style={{ color: 'var(--ink-2)' }}>
-                {GRANTFLOW_ADDRESS}
-              </code>
-              <CopyButton text={GRANTFLOW_ADDRESS} />
-              <a
-                href={addrUrl(GRANTFLOW_ADDRESS)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-xs font-medium"
-                style={{ color: 'var(--accent-hover)' }}
-              >
-                Explorer <ExternalLink className="size-3" />
-              </a>
-              <a
-                href="https://github.com/khanhnttu/grantflow/blob/main/contracts/GrantFlow.sol"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 text-xs font-medium"
-                style={{ color: 'var(--accent-hover)' }}
-              >
-                <Github className="size-3" /> Source
-              </a>
-            </div>
+          <div className="space-y-3">
+            {faqs.map(({ q, a }) => <FAQItem key={q} q={q} a={a} />)}
           </div>
         </div>
-      </section>
+      </SectionBand>
 
-      <Divider />
-
-      {/* ── FAQ ───────────────────────────────────────────────────────── */}
-      <section>
-        <div className="text-center mb-10">
-          <SectionLabel>FAQ</SectionLabel>
-          <SectionHeading>Common questions</SectionHeading>
-        </div>
-
-        <div className="max-w-2xl mx-auto space-y-2">
-          <FAQItem
-            q="Which wallet do I need?"
-            a="Any EVM wallet that supports Arc Mainnet (chain ID 5042). MetaMask, Coinbase Wallet, and WalletConnect-compatible wallets work. Add Arc Mainnet manually if it is not listed: RPC https://rpc.mainnet.arc.io, Chain ID 5042, currency symbol USDC."
-          />
-          <FAQItem
-            q="Which network and token are used?"
-            a="GrantFlow runs on Arc Mainnet. The token is USDC — and on Arc, USDC is also the native gas token, so you only need USDC in your wallet. No ETH or other token is required."
-          />
-          <FAQItem
-            q="What happens if no winners are approved?"
-            a="The sponsor can call reclaim() after the deadline to recover all unclaimed USDC from the prize pool. The 1% platform fee is not refunded — it was collected at program creation."
-          />
-          <FAQItem
-            q="Can a sponsor withdraw funds early?"
-            a="No. Funds are locked in the contract until the deadline passes. After the deadline, only the sponsor can reclaim unused slots. This guarantee is enforced by the smart contract, not by GrantFlow."
-          />
-          <FAQItem
-            q="Who controls the platform fee?"
-            a="The fee rate (currently 1%, hard-capped at 5%) and the fee recipient address are set in the contract constructor and can only be updated by the contract owner via Ownable2Step. The current owner is the deployer wallet. Both values are publicly readable onchain."
-          />
-          <FAQItem
-            q="Is the contract upgradeable?"
-            a="No. The contract is not upgradeable. There is no proxy, no admin key that can change the logic, and no pause function. What is deployed is what runs — permanently."
-          />
-        </div>
-      </section>
-
-      <Divider />
-
-      {/* ── CTA ───────────────────────────────────────────────────────── */}
-      <section className="text-center py-8 space-y-4">
-        <SectionHeading>Ready to run your first program?</SectionHeading>
-        <p className="text-sm" style={{ color: 'var(--ink-2)' }}>
-          Connect your wallet and launch in under two minutes.
-        </p>
-        <button
-          onClick={onLaunch}
-          className="inline-flex items-center gap-2 rounded-2xl px-8 py-3 text-sm font-semibold transition-all hover:opacity-90"
-          style={{ background: 'var(--accent)', color: 'white' }}
+      {/* ── 8. CTA ───────────────────────────────────────────────────────────── */}
+      <SectionBand alt>
+        <div
+          className="text-center py-12 rounded-3xl space-y-5"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
         >
-          Launch a program
-          <ArrowRight className="size-4" />
-        </button>
-      </section>
+          <h2 className="display text-2xl sm:text-3xl font-bold" style={{ color: 'var(--ink)' }}>{t('landing.cta.heading')}</h2>
+          <p className="text-sm" style={{ color: 'var(--ink-2)' }}>{t('landing.cta.sub')}</p>
+          <button
+            onClick={onLaunch}
+            className="inline-flex items-center gap-2 rounded-2xl px-8 py-3 text-sm font-semibold transition-all hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 min-h-[44px]"
+            style={{ background: 'var(--accent)', color: 'white', outlineColor: 'var(--focus)' }}
+          >
+            {t('landing.cta.button')} <ArrowRight className="size-4" />
+          </button>
+        </div>
+      </SectionBand>
 
     </div>
   );

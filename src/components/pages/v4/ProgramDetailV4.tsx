@@ -9,12 +9,12 @@
  * Winners tab: celebratory header, ranked winner cards, claim/payout status,
  *              unawarded prizes reclaim status, share-results button.
  */
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   ArrowLeft, ExternalLink, RefreshCw, CheckCircle2, AlertTriangle,
   Share2, Copy, Trophy,
 } from 'lucide-react';
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount } from 'wagmi';
 import {
   useProgramV4, useProgramJudges, useSubmissionCountV4,
   useAllSubmissionsV4, useVotesRemaining, useHasSubmitted,
@@ -24,14 +24,21 @@ import {
 import {
   computePhase, countdownLabel, totalPool, usdcToDisplay,
   PHASE_LABELS, PHASE_COLORS, CATEGORY_LABELS, PROGRAM_TYPE_LABELS,
-  Phase, ProgramType, shortAddr, feeAmount, parseOnchainErrorV4,
+  Phase, ProgramType, shortAddr, feeAmount,
 } from '@/lib/grantflowV4';
 import { useRole } from '@/components/RoleSwitcher';
-
-const CHAIN_EXPLORER: Record<number, string> = {
-  5042002: 'https://explorer.testnet.arc.io',
-  5042:    'https://explorer.arc.io',
-};
+import { useI18n } from '@/hooks/useI18n';
+import { useNetworkStore } from '@/hooks/useNetworkStore';
+import { useDisableTx } from '@/components/NetworkUI';
+import {
+  useTxRecovery,
+  makeSubmissionPoller,
+  makeVotePoller,
+  makeFinalizePoller,
+  makeClaimPoller,
+  makeReclaimPoller,
+  makeCancelledPoller,
+} from '@/hooks/useTxRecovery';
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 const RANK_BG = [
@@ -55,8 +62,10 @@ interface SubRow {
 }
 
 export function ProgramDetailV4({ programId, onBack }: Props) {
-  const chainId  = useChainId();
-  const explorer = CHAIN_EXPLORER[chainId] ?? CHAIN_EXPLORER[5042002];
+  const { t } = useI18n();
+  const { config } = useNetworkStore();
+  const explorer = config.explorerBase;
+  const disableTx = useDisableTx();
   const { address: account } = useAccount();
   const { role } = useRole();
 
@@ -78,6 +87,7 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
   const reclaimedLog = useReclaimedLogs(programId);
 
   const { submit, vote, finalize, claim, reclaim, cancel } = useV4Write();
+  const { sendWithRecovery, appClient } = useTxRecovery();
 
   // ── State (all before early return) ──────────────────────────────────────────
   const [busy, setBusy]   = useState(false);
@@ -89,8 +99,12 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
   const [copied, setCopied]             = useState(false);
   // Tab state — declared unconditionally before any early return
   const [tab, setTab] = useState<TabId>('details');
-  // Capture current time once at mount — useState initializer runs outside render.
-  const [nowSec] = useState<bigint>(() => BigInt(Math.floor(Date.now() / 1000)));
+  // Live clock — updates every 30s so phase banners and countdowns stay accurate.
+  const [nowSec, setNowSec] = useState<bigint>(() => BigInt(Math.floor(Date.now() / 1000)));
+  useEffect(() => {
+    const id = setInterval(() => setNowSec(BigInt(Math.floor(Date.now() / 1000))), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const refetchAll = useCallback(() => {
     void refetchProg();
@@ -141,11 +155,11 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
   // ── Tab definitions ───────────────────────────────────────────────────────────
   const TABS: { id: TabId; label: string }[] = [
     ...(finalized ? [{ id: 'winners' as TabId, label: 'Winners' }] : []),
-    { id: 'details',      label: 'Details'                         },
+    { id: 'details',      label: t('tab.details')                         },
     { id: 'submissions',  label: `Submissions (${subCount})`       },
-    { id: 'participants', label: `Participants (${participants.length})` },
-    { id: 'judges',       label: 'Judges'                          },
-    { id: 'ask',          label: 'Ask / Contact'                   },
+    { id: 'participants', label: `${t('tab.participants')} (${participants.length})` },
+    { id: 'judges',       label: t('tab.judges')                          },
+    { id: 'ask',          label: t('tab.ask')                   },
   ];
   // Jump to winners when finalized arrives mid-session
   const effectiveTab = finalized && tab === 'details' && winners.length > 0 ? 'winners' : tab;
@@ -160,7 +174,7 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
     });
   };
 
-  // Find claim tx for a winner address (latest Claimed event from that address after finalization)
+  // Find claim tx for a winner address (latest {t('winners.claimed')} event from that address after finalization)
   const claimTxFor = (winner: string): `0x${string}` | null => {
     const match = claimedLogs
       .filter(l => l.recipient.toLowerCase() === winner.toLowerCase())
@@ -174,69 +188,98 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
 
   // ── Tx handlers ──────────────────────────────────────────────────────────────
 
+  // Shared tx opts factory — sets busy, clears messages, runs refetchAll on success.
+  const txOpts = (okMsg: string) => ({
+    setStatus: (m: string) => { if (m) setTxOk(m); },
+    setError:  (m: string) => setTxErr(m),
+    onSuccess: () => { setTxOk(okMsg); refetchAll(); },
+  });
+
   const handleSubmit = async () => {
     if (!account) return;
     setBusy(true); setTxErr(''); setTxOk('');
-    try {
-      const projAddr: `0x${string}` = pType === ProgramType.OPEN_BOUNTY
-        ? '0x0000000000000000000000000000000000000000'
-        : (subContract as `0x${string}`);
-      await submit(BigInt(programId), projAddr, subMeta);
-      setTxOk('Submitted!');
-      setSubMeta(''); setSubContract(''); setSubConfirm(false);
-      refetchAll();
-    } catch (e) { setTxErr(parseOnchainErrorV4(e)); }
+    const projAddr: `0x${string}` = pType === ProgramType.OPEN_BOUNTY
+      ? '0x0000000000000000000000000000000000000000'
+      : (subContract as `0x${string}`);
+    const prevCount = BigInt(subCount);
+    await sendWithRecovery(
+      () => submit(BigInt(programId), projAddr, subMeta),
+      makeSubmissionPoller(appClient, config.v4Address, BigInt(programId), prevCount),
+      { ...txOpts('Submitted!'), onSuccess: () => {
+        setTxOk('Submitted!');
+        setSubMeta(''); setSubContract(''); setSubConfirm(false);
+        refetchAll();
+      }},
+    );
     setBusy(false);
   };
 
   const handleVote = async (sid: number) => {
     setBusy(true); setTxErr(''); setTxOk('');
+    // Read current vote count for this submission to use as baseline in poller
+    let prevVotes = 0n;
     try {
-      await vote(BigInt(programId), BigInt(sid));
-      setTxOk(`Voted on submission #${sid}.`);
-      refetchAll();
-    } catch (e) { setTxErr(parseOnchainErrorV4(e)); }
+      const row = rows.find(r => r.id === sid);
+      prevVotes = row?.voteCount ?? 0n;
+    } catch { /* use 0n */ }
+    await sendWithRecovery(
+      () => vote(BigInt(programId), BigInt(sid)),
+      makeVotePoller(appClient, config.v4Address, BigInt(programId), BigInt(sid), prevVotes),
+      txOpts(`Voted on submission #${sid}.`),
+    );
     setBusy(false);
   };
 
   const handleFinalize = async () => {
     setBusy(true); setTxErr(''); setTxOk('');
-    try {
-      await finalize(BigInt(programId));
-      setTxOk('Program finalized!');
-      refetchAll();
-    } catch (e) { setTxErr(parseOnchainErrorV4(e)); }
+    await sendWithRecovery(
+      () => finalize(BigInt(programId)),
+      makeFinalizePoller(appClient, config.v4Address, BigInt(programId)),
+      txOpts('Program finalized!'),
+    );
     setBusy(false);
   };
 
   const handleReclaim = async () => {
+    if (!account) return;
     setBusy(true); setTxErr(''); setTxOk('');
+    // Read sponsor's current USDC balance as baseline for reclaim poller
+    let prevBalance = 0n;
     try {
-      await reclaim(BigInt(programId));
-      setTxOk('Funds reclaimed to sponsor.');
-      refetchAll();
-    } catch (e) { setTxErr(parseOnchainErrorV4(e)); }
+      const { ERC20_ABI } = await import('@/lib/grantflowV4');
+      prevBalance = await appClient.readContract({
+        address: config.usdcAddress, abi: ERC20_ABI,
+        functionName: 'balanceOf', args: [sponsor],
+      });
+    } catch { /* use 0n */ }
+    await sendWithRecovery(
+      () => reclaim(BigInt(programId)),
+      makeReclaimPoller(appClient, config.v4Address, config.usdcAddress, BigInt(programId), sponsor, prevBalance),
+      txOpts('Funds reclaimed to sponsor.'),
+    );
     setBusy(false);
   };
 
   const handleCancel = async () => {
     if (!window.confirm('Cancel this program? The prize pool will be returned. This cannot be undone.')) return;
     setBusy(true); setTxErr(''); setTxOk('');
-    try {
-      await cancel(BigInt(programId));
-      setTxOk('Program cancelled.');
-      refetchAll();
-    } catch (e) { setTxErr(parseOnchainErrorV4(e)); }
+    await sendWithRecovery(
+      () => cancel(BigInt(programId)),
+      makeCancelledPoller(appClient, config.v4Address, BigInt(programId)),
+      txOpts('Program cancelled.'),
+    );
     setBusy(false);
   };
 
   const handleClaim = async () => {
+    if (!account) return;
     setBusy(true); setTxErr(''); setTxOk('');
-    try {
-      await claim();
-      setTxOk('USDC claimed to your wallet!');
-      refetchAll();
-    } catch (e) { setTxErr(parseOnchainErrorV4(e)); }
+    const prevPending = pending ?? 0n;
+    await sendWithRecovery(
+      () => claim(),
+      makeClaimPoller(appClient, config.v4Address, account, prevPending),
+      txOpts('USDC claimed to your wallet!'),
+    );
     setBusy(false);
   };
 
@@ -257,14 +300,15 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
       <div className={`flex items-center justify-between gap-3 px-4 py-3 rounded-xl border ${bannerColor}`}>
         <div className="flex items-center gap-2 text-sm font-medium">
           <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-          {isSubPhase && `Submissions open · closes in ${countdownLabel(subDl)}`}
-          {isJudgPhase && !pastJudging && `Judging in progress · closes in ${countdownLabel(judDl)}`}
-          {isJudgPhase && pastJudging && 'Judging deadline passed · waiting for finalize'}
+          {isSubPhase && `${t('phaseBanner.subOpen')} ${countdownLabel(subDl)}`}
+          {isJudgPhase && !pastJudging && `${t('phaseBanner.judging')} ${countdownLabel(judDl)}`}
+          {isJudgPhase && pastJudging && t('phaseBanner.waitFinalize')}
         </div>
         {/* Anyone can finalize after judging deadline */}
         {pastJudging && (
-          <Btn onClick={() => void handleFinalize()} disabled={busy}>
-            {busy ? 'Finalizing…' : 'Finalize now'}
+          <Btn onClick={() => void handleFinalize()} disabled={busy || disableTx}
+            title={disableTx ? 'Switch to the correct network first' : undefined}>
+            {busy ? t('phaseBanner.finalizing') : t('phaseBanner.finalizeNow')}
           </Btn>
         )}
       </div>
@@ -280,28 +324,28 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
         style={{ background: 'linear-gradient(135deg,var(--accent)18,var(--surface))', border: '1px solid var(--border)' }}>
         <div className="text-3xl mb-2">🏆</div>
         <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>
-          Winners announced
+          {t('winners.announced')}
         </h2>
         <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-muted)' }}>{name}</p>
         <div className="flex justify-center gap-6 text-sm">
-          <Stat label="Total paid out" value={`${usdcToDisplay(totalPaidOut)} USDC`} accent />
-          <Stat label="Submissions" value={String(subCount)} />
-          <Stat label="Winners" value={String(winners.length)} />
+          <Stat label={t('winners.totalPaidOut')} value={`${usdcToDisplay(totalPaidOut)} USDC`} accent />
+          <Stat label={t('tab.submissions')} value={String(subCount)} />
+          <Stat label={t('tab.winners')} value={String(winners.length)} />
         </div>
-        {/* Share results */}
+        {/* {t('winners.shareResults')} */}
         <button
           onClick={shareResults}
           className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
           style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}
         >
-          {copied ? <><CheckCircle2 size={12} /> Link copied!</> : <><Share2 size={12} /> Share results</>}
+          {copied ? <><CheckCircle2 size={12} /> {t('winners.linkCopied')}</> : <><Share2 size={12} /> {t('winners.shareResults')}</>}
         </button>
       </div>
 
       {/* Winner cards */}
       {winners.length === 0 ? (
         <p className="text-sm text-center py-8" style={{ color: 'var(--text-muted)' }}>
-          No winners — no submission received votes.
+          {t('winners.noWinners')}
         </p>
       ) : (
         <div className="flex flex-col gap-3">
@@ -326,7 +370,7 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
-                        Rank {rank + 1}
+                        {t('winners.rank')} {rank + 1}
                       </span>
                       <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
                         {usdcToDisplay(r.prizeAw)} USDC
@@ -369,7 +413,7 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
                     {prizeLog && (
                       <a href={`${explorer}/tx/${prizeLog.txHash}`} target="_blank" rel="noreferrer"
                         className="text-xs hover:underline mt-0.5 block" style={{ color: 'var(--text-muted)' }}>
-                        Prize assigned · tx <ExternalLink size={9} className="inline" />
+{t('winners.prizeAssigned')} <ExternalLink size={9} className="inline" />
                       </a>
                     )}
                   </div>
@@ -379,22 +423,23 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
                     {r.claimed ? (
                       <div className="flex flex-col items-end gap-1">
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
-                          <CheckCircle2 size={12} /> Claimed
+                          <CheckCircle2 size={12} /> {t('winners.claimed')}
                         </span>
                         {claimTx && (
                           <a href={`${explorer}/tx/${claimTx}`} target="_blank" rel="noreferrer"
                             className="text-xs hover:underline" style={{ color: 'var(--text-muted)' }}>
-                            view tx <ExternalLink size={9} className="inline" />
+{t('winners.viewTx')} <ExternalLink size={9} className="inline" />
                           </a>
                         )}
                       </div>
                     ) : (
                       <div className="flex flex-col items-end gap-1">
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                          Unclaimed · winner can claim
+{t('winners.unclaimed')}
                         </span>
                         {isMe && (pending ?? 0n) > 0n && (
-                          <Btn onClick={() => void handleClaim()} disabled={busy}>
+                          <Btn onClick={() => void handleClaim()} disabled={busy || disableTx}
+                            title={disableTx ? 'Switch to the correct network first' : undefined}>
                             Claim {usdcToDisplay(pending ?? 0n)} USDC
                           </Btn>
                         )}
@@ -412,21 +457,22 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
       {reclaimedLog ? (
         <div className="rounded-xl px-4 py-3 text-sm"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-          <span className="font-medium" style={{ color: 'var(--text)' }}>Unawarded prizes returned to sponsor</span>
+          <span className="font-medium" style={{ color: 'var(--text)' }}>{t('winners.unawardedReturned')}</span>
           {' '}·{' '}
           <a href={`${explorer}/tx/${reclaimedLog.txHash}`} target="_blank" rel="noreferrer"
             className="hover:underline" style={{ color: 'var(--accent)' }}>
-            {usdcToDisplay(reclaimedLog.amount)} USDC reclaimed <ExternalLink size={10} className="inline" />
+            {usdcToDisplay(reclaimedLog.amount)} {t('winners.reclaimed')} <ExternalLink size={10} className="inline" />
           </a>
         </div>
       ) : isSponsor && finalized && (
         <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Reclaim unawarded prize funds
+            {t('winners.reclaimFunds')}
           </span>
-          <Btn variant="secondary" onClick={() => void handleReclaim()} disabled={busy}>
-            {busy ? 'Reclaiming…' : 'Reclaim'}
+          <Btn variant="secondary" onClick={() => void handleReclaim()} disabled={busy || disableTx}
+            title={disableTx ? 'Switch to the correct network first' : undefined}>
+            {busy ? t('winners.reclaiming') : t('winners.reclaim')}
           </Btn>
         </div>
       )}
@@ -437,32 +483,32 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
 
   const renderDetailsTab = () => (
     <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-      <Card title="About">
+      <Card title={t('details.about')}>
         <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          {desc || 'No description provided.'}
+          {desc || t('details.noDesc')}
         </p>
       </Card>
-      <Card title="Prizes">
+      <Card title={t('details.prizes')}>
         {prizes.map((amt, i) => (
           <div key={i} className="flex items-center gap-2 py-1">
             <span className="text-lg">{MEDAL[i] ?? `#${i + 1}`}</span>
             <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
               {usdcToDisplay(amt)} USDC
             </span>
-            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Rank {i + 1}</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{t('winners.rank')} {i + 1}</span>
           </div>
         ))}
       </Card>
-      <Card title="Deadlines">
-        <Row label="Submissions close" value={new Date(Number(subDl) * 1000).toLocaleString()} />
-        <Row label="Judging closes"    value={new Date(Number(judDl) * 1000).toLocaleString()} />
-        <Row label="Countdown (sub)"   value={countdownLabel(subDl)} />
-        <Row label="Countdown (judge)" value={countdownLabel(judDl)} />
+      <Card title={t('details.deadlines')}>
+        <Row label={t('details.subClose')} value={new Date(Number(subDl) * 1000).toLocaleString()} />
+        <Row label={t('details.judgeClose')}    value={new Date(Number(judDl) * 1000).toLocaleString()} />
+        <Row label={t('details.countdownSub')}   value={countdownLabel(subDl)} />
+        <Row label={t('details.countdownJudge')} value={countdownLabel(judDl)} />
       </Card>
-      <Card title="Fee breakdown">
-        <Row label="Prize pool"  value={`${usdcToDisplay(pool)} USDC`} />
-        <Row label={`Platform fee (${Number(feeBps) / 100}%)`} value={`${usdcToDisplay(fee)} USDC`} />
-        <Row label="Total deposited" value={`${usdcToDisplay(pool + fee)} USDC`} strong />
+      <Card title={t('details.feeBreakdown')}>
+        <Row label={t('details.prizePool')}  value={`${usdcToDisplay(pool)} USDC`} />
+        <Row label={`${t('details.platformFee')} (${Number(feeBps) / 100}%)`} value={`${usdcToDisplay(fee)} USDC`} />
+        <Row label={t('details.totalDeposited')} value={`${usdcToDisplay(pool + fee)} USDC`} strong />
       </Card>
     </div>
   );
@@ -473,33 +519,34 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
     <div className="flex flex-col gap-3">
       {/* Hacker submit action */}
       {role === 'hacker' && phase === Phase.Submission && !hasSub && account && (
-        <Card title="Submit your project">
+        <Card title={t('subs.submitTitle')}>
           {!subConfirm ? (
             <div className="flex flex-col gap-3">
               {pType === ProgramType.ONCHAIN_BUILD && (
-                <Input label="Deployed contract address" value={subContract}
+                <Input label={t('subs.contractAddr')} value={subContract}
                   onChange={setSubContract} placeholder="0x…" />
               )}
               <Input
-                label={pType === ProgramType.OPEN_BOUNTY ? 'Link to your work' : 'Metadata link (GitHub, docs…)'}
+                label={pType === ProgramType.OPEN_BOUNTY ? t('subs.linkToWork') : t('subs.metaLink')}
                 value={subMeta} onChange={setSubMeta} placeholder="https://github.com/…"
               />
-              <Btn onClick={() => setSubConfirm(true)} disabled={!subMeta && !subContract}>
-                Review submission
+              <Btn onClick={() => setSubConfirm(true)} disabled={(!subMeta && !subContract) || disableTx}>
+                {t('subs.reviewSub')}
               </Btn>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               <div className="rounded-lg p-3 text-xs" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
-                <div className="font-semibold mb-2" style={{ color: 'var(--text)' }}>Confirm submission</div>
-                <Row label="Program" value={name} />
-                {pType === ProgramType.ONCHAIN_BUILD && <Row label="Contract" value={shortAddr(subContract)} />}
-                <Row label="Link" value={subMeta || '—'} />
+                <div className="font-semibold mb-2" style={{ color: 'var(--text)' }}>{t('subs.confirm')}</div>
+                <Row label={t('subs.program')} value={name} />
+                {pType === ProgramType.ONCHAIN_BUILD && <Row label={t('subs.contract')} value={shortAddr(subContract)} />}
+                <Row label={t('subs.link')} value={subMeta || '—'} />
               </div>
               <div className="flex gap-2">
-                <Btn variant="secondary" onClick={() => setSubConfirm(false)}>Back</Btn>
-                <Btn onClick={() => void handleSubmit()} disabled={busy}>
-                  {busy ? 'Submitting…' : 'Submit onchain'}
+                <Btn variant="secondary" onClick={() => setSubConfirm(false)}>{t('subs.back')}</Btn>
+                <Btn onClick={() => void handleSubmit()} disabled={busy || disableTx}
+                  title={disableTx ? 'Switch to the correct network first' : undefined}>
+                  {busy ? t('subs.submitting') : t('subs.submitOnchain')}
                 </Btn>
               </div>
             </div>
@@ -509,11 +556,12 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
 
       {/* List */}
       {rows.length === 0 ? (
-        <p className="text-sm text-center py-10" style={{ color: 'var(--text-muted)' }}>No submissions yet.</p>
+        <p className="text-sm text-center py-10" style={{ color: 'var(--text-muted)' }}>{t('subs.empty')}</p>
       ) : (
         rows.map(r => (
           <SubCard key={r.id} row={r} prizes={prizes} phase={phase} explorer={explorer}
-            isJudge={!!isJudge} onVote={handleVote} busy={busy} account={account} />
+            isJudge={!!isJudge} onVote={handleVote} busy={busy} account={account}
+            disableTx={disableTx} />
         ))
       )}
     </div>
@@ -524,7 +572,7 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
   const renderParticipantsTab = () => (
     <div className="flex flex-col gap-2">
       {participants.length === 0 ? (
-        <p className="text-sm text-center py-10" style={{ color: 'var(--text-muted)' }}>No participants yet.</p>
+        <p className="text-sm text-center py-10" style={{ color: 'var(--text-muted)' }}>{t('participants.empty')}</p>
       ) : (
         participants.map(addr => (
           <div key={addr} className="flex items-center justify-between px-4 py-2.5 rounded-xl"
@@ -548,7 +596,7 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
   const renderJudgesTab = () => (
     <div className="flex flex-col gap-2">
       {(judges ?? []).length === 0 ? (
-        <p className="text-sm text-center py-10" style={{ color: 'var(--text-muted)' }}>No judges listed.</p>
+        <p className="text-sm text-center py-10" style={{ color: 'var(--text-muted)' }}>{t('judges.empty')}</p>
       ) : (
         (judges ?? []).map(j => (
           <div key={j} className="flex items-center justify-between px-4 py-2.5 rounded-xl"
@@ -571,9 +619,9 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
 
   const renderAskTab = () => (
     <div className="flex flex-col gap-4">
-      <Card title="Contact the sponsor">
+      <Card title={t('ask.title')}>
         <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-          This program is organised by{' '}
+          {t('ask.organizedBy')}{' '}
           <a href={`${explorer}/address/${sponsor}`} target="_blank" rel="noreferrer"
             className="font-mono hover:underline" style={{ color: 'var(--accent)' }}>
             {shortAddr(sponsor)}
@@ -587,14 +635,14 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
             style={{ background: 'var(--accent)', color: '#fff' }}
           >
-            <ExternalLink size={11} /> View on explorer
+            <ExternalLink size={11} /> {t('ask.viewExplorer')}
           </a>
           <button
             onClick={() => void navigator.clipboard.writeText(sponsor).then(() => setCopied(true))}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
             style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}
           >
-            <Copy size={11} /> {copied ? 'Copied!' : 'Copy address'}
+            <Copy size={11} /> {copied ? t('ask.copied') : t('ask.copyAddress')}
           </button>
         </div>
       </Card>
@@ -642,10 +690,10 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
             </span>
           </div>
           <div className="flex flex-wrap gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-            <StatSmall label="Pool"   value={`${usdcToDisplay(pool)} USDC`} />
-            <StatSmall label="Prizes" value={prizes.length.toString()} />
-            {!finalized && <StatSmall label="Sub closes"   value={countdownLabel(subDl)} />}
-            {!finalized && <StatSmall label="Judge closes" value={countdownLabel(judDl)} />}
+            <StatSmall label={t('detail.pool')}   value={`${usdcToDisplay(pool)} USDC`} />
+            <StatSmall label={t('detail.prizes')} value={prizes.length.toString()} />
+            {!finalized && <StatSmall label={t('detail.subCloses')}   value={countdownLabel(subDl)} />}
+            {!finalized && <StatSmall label={t('detail.judgeCloses')} value={countdownLabel(judDl)} />}
             <span>
               Sponsor:{' '}
               <a href={`${explorer}/address/${sponsor}`} target="_blank" rel="noreferrer"
@@ -663,14 +711,17 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
       {/* Phase banner */}
       {renderPhaseBanner()}
 
-      {/* Pending claim banner */}
-      {(pending ?? 0n) > 0n && !finalized && (
+      {/* Pending claim banner — show whenever there are funds to claim */}
+      {(pending ?? 0n) > 0n && (
         <div className="flex items-center justify-between px-4 py-3 rounded-xl"
           style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
           <span className="text-sm text-emerald-400 font-medium">
-            You have {usdcToDisplay(pending ?? 0n)} USDC to claim!
+            {t('prog.pendingClaim')} {usdcToDisplay(pending ?? 0n)} {t('prog.toClaim')}
           </span>
-          <Btn onClick={() => void handleClaim()} disabled={busy}>Claim USDC</Btn>
+          <Btn onClick={() => void handleClaim()} disabled={busy || disableTx}
+            title={disableTx ? 'Switch to the correct network first' : undefined}>
+            {t('prog.claimUsdc')}
+          </Btn>
         </div>
       )}
 
@@ -684,18 +735,18 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
 
       {/* Tabs */}
       <div className="flex gap-0 overflow-x-auto border-b" style={{ borderColor: 'var(--border)' }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
+        {TABS.map(tabItem => (
+          <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
             className="px-4 py-2 text-xs font-medium border-b-2 transition-colors -mb-px whitespace-nowrap"
-            style={effectiveTab === t.id
+            style={effectiveTab === tabItem.id
               ? { borderColor: 'var(--accent)', color: 'var(--accent)' }
               : { borderColor: 'transparent', color: 'var(--text-muted)' }
             }>
-            {t.id === 'winners' ? (
+            {tabItem.id === 'winners' ? (
               <span className="inline-flex items-center gap-1">
-                <Trophy size={11} /> {t.label}
+                <Trophy size={11} /> {tabItem.label}
               </span>
-            ) : t.label}
+            ) : tabItem.label}
           </button>
         ))}
       </div>
@@ -713,9 +764,10 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
       {/* Cancel (organizer, before any submissions) */}
       {isSponsor && subCount === 0 && !cancelled && !finalized && (
         <div className="pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-          <button onClick={() => void handleCancel()} disabled={busy}
-            className="text-xs hover:underline" style={{ color: 'var(--text-muted)' }}>
-            Cancel program and recover prize pool
+          <button onClick={() => void handleCancel()} disabled={busy || disableTx}
+            className="text-xs hover:underline disabled:opacity-40" style={{ color: 'var(--text-muted)' }}
+            title={disableTx ? 'Switch to the correct network first' : undefined}>
+            {t('prog.cancelProgram')}
           </button>
         </div>
       )}
@@ -725,7 +777,7 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function SubCard({ row, prizes, phase, explorer, isJudge, onVote, busy, account }: {
+function SubCard({ row, prizes, phase, explorer, isJudge, onVote, busy, account, disableTx }: {
   row: SubRow;
   prizes: readonly bigint[];
   phase: number;
@@ -734,6 +786,7 @@ function SubCard({ row, prizes, phase, explorer, isJudge, onVote, busy, account 
   onVote: (id: number) => Promise<void>;
   busy: boolean;
   account: string | undefined;
+  disableTx: boolean;
 }) {
   const isOwnSubmission = account?.toLowerCase() === row.submitter.toLowerCase();
   const canVote = isJudge && phase === Phase.Judging && !isOwnSubmission;
@@ -784,7 +837,8 @@ function SubCard({ row, prizes, phase, explorer, isJudge, onVote, busy, account 
             </div>
           )}
           {canVote && (
-            <Btn onClick={() => { void onVote(row.id); }} disabled={busy}>Vote</Btn>
+            <Btn onClick={() => { void onVote(row.id); }} disabled={busy || disableTx}
+          title={disableTx ? 'Switch to the correct network first' : undefined}>Vote</Btn>
           )}
         </div>
       </div>
@@ -839,12 +893,13 @@ function Input({ label, value, onChange, placeholder }: {
   );
 }
 
-function Btn({ onClick, disabled, children, variant = 'primary' }: {
+function Btn({ onClick, disabled, children, variant = 'primary', title }: {
   onClick?: () => void; disabled?: boolean;
   children: React.ReactNode; variant?: 'primary' | 'secondary';
+  title?: string;
 }) {
   return (
-    <button onClick={onClick} disabled={disabled}
+    <button onClick={onClick} disabled={disabled} title={title}
       className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
       style={variant === 'primary'
         ? { background: 'var(--accent)', color: '#fff' }

@@ -63,9 +63,9 @@ export const KB: KbEntry[] = [
     titleEn: 'How do I create a program?',
     titleVi: 'Làm thế nào để tạo chương trình?',
     answerEn:
-      'Connect your wallet, go to "My programs" (Sponsor tab), and click "+ Create program". Fill in the name, type (Onchain Build or Open Bounty), category, description, prize per winner, slots, deadline, reviewer addresses, and approval threshold. You approve two USDC transactions: one for the prize pool, one for the 1% platform fee. Both are locked in the contract upfront.',
+      'Connect your wallet, switch to the Organizer role, and click "Create program". Fill in the four steps: basics (name, type, deadlines), prizes (ranked prize amounts), judges (wallet addresses), and review & pay. You approve USDC in one transaction and create the program in a second. The full prize pool is locked immediately; the 1% fee goes to the platform.',
     answerVi:
-      'Kết nối ví, vào "My programs" (tab Sponsor) và nhấn "+ Tạo chương trình". Điền tên, loại (Onchain Build hoặc Open Bounty), danh mục, mô tả, giải thưởng mỗi slot, số slot, hạn chót, địa chỉ reviewer và ngưỡng phê duyệt. Bạn phê duyệt hai giao dịch USDC: một cho prize pool, một cho phí nền tảng 1%. Cả hai đều khóa trong hợp đồng ngay lúc tạo.',
+      'Kết nối ví, chuyển sang vai Nhà tài trợ và nhấn "Tạo chương trình". Điền bốn bước: cơ bản (tên, loại, thời hạn), giải thưởng (danh sách giải theo hạng), giám khảo (địa chỉ ví), xem lại & thanh toán. Bạn phê duyệt USDC một giao dịch rồi tạo chương trình giao dịch thứ hai. Toàn bộ quỹ giải thưởng khóa ngay; phí 1% vào nền tảng.',
     navTarget: 'sponsor',
     navLabelEn: 'Open Create program',
     navLabelVi: 'Mở trang Tạo chương trình',
@@ -111,9 +111,9 @@ export const KB: KbEntry[] = [
     titleEn: 'What if there are no winners?',
     titleVi: 'Nếu không có người thắng thì sao?',
     answerEn:
-      'If the deadline passes with no fully-approved submissions, the sponsor can reclaim the unspent prize pool via "Reclaim funds" on their program. The 1% fee is not returned — only the unclaimed prize pool. There is no time limit on reclaiming after the deadline.',
+      'After finalization, any prize tier with no winning submission is left unclaimed. The sponsor can reclaim those unawarded prizes via the program page (Reclaim button in the Winners tab). The 1% fee is not returned. There is no time limit on reclaiming after finalization.',
     answerVi:
-      'Nếu hết hạn mà không có bài nộp được phê duyệt đủ ngưỡng, sponsor có thể lấy lại prize pool chưa dùng qua "Reclaim funds". Phí 1% không hoàn lại — chỉ có prize pool chưa nhận mới được lấy. Không có giới hạn thời gian lấy lại sau hạn chót.',
+      'Sau khi finalize, bất kỳ hạng giải nào không có bài thắng sẽ không được trao. Nhà tài trợ có thể lấy lại các giải chưa trao qua trang chương trình (nút Reclaim trong tab Winners). Phí 1% không hoàn lại. Không giới hạn thời gian lấy lại sau finalize.',
     navTarget: 'sponsor',
     navLabelEn: 'Open My programs',
     navLabelVi: 'Mở My programs',
@@ -130,9 +130,9 @@ export const KB: KbEntry[] = [
     titleEn: 'How do winners get paid?',
     titleVi: 'Người chiến thắng nhận tiền như thế nào?',
     answerEn:
-      'GrantFlow uses a pull-claim pattern. Once enough reviewers approve a submission (meeting the threshold), the winner can claim. Go to "My submissions" (Builder tab), find the approved submission, and click "Claim USDC". This transfers the prize from the contract to your wallet. No one can push funds to you — you must claim yourself.',
+      'GrantFlow uses a pull-claim pattern. After the sponsor finalizes the program, winners are ranked by vote count. If you ranked in the top N (where N = number of prizes), go to "My submissions" (Hacker role), find the winning submission, and click "Claim USDC". This transfers the prize from the contract to your wallet. No one can push funds to you — you must claim yourself.',
     answerVi:
-      'GrantFlow dùng mô hình pull-claim. Khi đủ reviewer phê duyệt (đạt ngưỡng), người thắng có thể nhận. Vào "My submissions" (tab Builder), tìm bài đã phê duyệt và nhấn "Claim USDC". Điều này chuyển giải thưởng từ hợp đồng vào ví bạn. Không ai đẩy tiền cho bạn — bạn phải tự nhận.',
+      'GrantFlow dùng mô hình pull-claim. Sau khi nhà tài trợ finalize, người thắng được xếp hạng theo số phiếu. Nếu bạn nằm trong top N (N = số giải), vào "My submissions" (vai Thí sinh), tìm bài thắng và nhấn "Claim USDC". Điều này chuyển giải thưởng từ hợp đồng vào ví bạn.',
     navTarget: 'builder',
     navLabelEn: 'Open My submissions',
     navLabelVi: 'Mở My submissions',
@@ -162,9 +162,9 @@ export const KB: KbEntry[] = [
     titleEn: 'How do I submit to a program?',
     titleVi: 'Làm thế nào để nộp bài?',
     answerEn:
-      'Go to "My submissions" (Builder tab). For Onchain Build programs, paste your deployed contract address. For Open Bounty programs, paste a link to your work. Submit before the deadline. Reviewers then vote. If enough approve (meeting the threshold), you can claim your prize.',
+      'Switch to the Hacker role and browse Explore. Open a program during the Submission phase. For Onchain Build programs, paste your deployed contract address. For Open Bounty programs, paste a link to your work. One submission per wallet per program. After finalization, check My submissions — if you won a ranked prize, a Claim button appears.',
     answerVi:
-      'Vào "My submissions" (tab Builder). Với Onchain Build, dán địa chỉ hợp đồng đã triển khai. Với Open Bounty, dán link công việc. Nộp trước hạn chót. Reviewer bỏ phiếu. Nếu đủ phê duyệt, bạn có thể nhận giải.',
+      'Chuyển sang vai Thí sinh và duyệt Explore. Mở chương trình đang trong pha Nộp bài. Với Onchain Build, dán địa chỉ hợp đồng đã triển khai. Với Open Bounty, dán link công việc. Một bài mỗi ví mỗi chương trình. Sau finalize, kiểm tra My submissions — nếu thắng, nút Claim sẽ hiện.',
     navTarget: 'builder',
     navLabelEn: 'Open My submissions',
     navLabelVi: 'Mở My submissions',
@@ -178,9 +178,9 @@ export const KB: KbEntry[] = [
     titleEn: 'How does reviewing work?',
     titleVi: 'Quy trình review hoạt động như thế nào?',
     answerEn:
-      'Sponsors add reviewer addresses when creating a program and set an approval threshold (e.g. 2-of-3). Reviewers go to the Review queue tab, see pending submissions, and click Approve. When the threshold is met, the winner can claim. Reviewers can only approve — they cannot transfer funds.',
+      'Sponsors assign judge wallet addresses when creating a program (V4). During the Judging phase (after submission deadline), judges open a program, go to the Submissions tab, and vote. Each judge has N votes where N equals the number of prize tiers. Judges cannot vote on their own submission or vote twice on the same submission.',
     answerVi:
-      'Sponsor thêm địa chỉ reviewer khi tạo và đặt ngưỡng (ví dụ 2/3). Reviewer vào tab Review queue, xem bài đang chờ và nhấn Approve. Khi đạt ngưỡng, người thắng nhận thưởng. Reviewer chỉ phê duyệt — không chuyển tiền.',
+      'Nhà tài trợ gán địa chỉ ví giám khảo khi tạo chương trình (V4). Trong pha Chấm điểm (sau hạn nộp bài), giám khảo mở chương trình, vào tab Bài dự thi và bình chọn. Mỗi giám khảo có N phiếu (N = số giải thưởng). Không thể bầu cho bài của chính mình hoặc bầu hai lần.',
     navTarget: 'reviewer',
     navLabelEn: 'Open Review queue',
     navLabelVi: 'Mở Review queue',

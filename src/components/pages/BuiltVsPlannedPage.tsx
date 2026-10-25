@@ -2,6 +2,7 @@
  * Built vs Planned — honest checklist of live features and roadmap.
  */
 import { Check, Clock, Circle } from 'lucide-react';
+import { useI18n } from '@/hooks/useI18n';
 
 type ItemStatus = 'live' | 'planned' | 'considering';
 
@@ -64,28 +65,31 @@ const ITEMS: Item[] = [
   { label: 'DAO governance for fee changes', status: 'considering' },
 ];
 
-function StatusBadge({ status }: { status: ItemStatus }) {
+function StatusBadge({ status, live, planned, considering }: { status: ItemStatus; live: string; planned: string; considering: string }) {
   if (status === 'live') return (
     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
       style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
-      <Check size={10} /> Live
+      <Check size={10} /> {live}
     </span>
   );
   if (status === 'planned') return (
     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
       style={{ background: 'rgba(79,158,248,0.1)', color: '#4f9ef8' }}>
-      <Clock size={10} /> Planned
+      <Clock size={10} /> {planned}
     </span>
   );
   return (
     <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
       style={{ background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
-      <Circle size={10} /> Considering
+      <Circle size={10} /> {considering}
     </span>
   );
 }
 
-function Section({ title, items }: { title: string; items: Item[] }) {
+function Section({ title, items, liveLabel, plannedLabel, consideringLabel }: {
+  title: string; items: Item[];
+  liveLabel: string; plannedLabel: string; consideringLabel: string;
+}) {
   return (
     <div className="mb-8">
       <h2 className="text-base font-bold mb-3" style={{ color: 'var(--text)' }}>{title}</h2>
@@ -94,7 +98,9 @@ function Section({ title, items }: { title: string; items: Item[] }) {
           <div key={item.label}
             className="flex items-start gap-3 rounded-xl px-4 py-3"
             style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <div className="flex-shrink-0 mt-0.5"><StatusBadge status={item.status} /></div>
+            <div className="flex-shrink-0 mt-0.5">
+              <StatusBadge status={item.status} live={liveLabel} planned={plannedLabel} considering={consideringLabel} />
+            </div>
             <div>
               <p className="text-sm" style={{ color: 'var(--text)' }}>{item.label}</p>
               {item.note && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{item.note}</p>}
@@ -107,6 +113,7 @@ function Section({ title, items }: { title: string; items: Item[] }) {
 }
 
 export function BuiltVsPlannedPage() {
+  const { t } = useI18n();
   const live       = ITEMS.filter(i => i.status === 'live');
   const planned    = ITEMS.filter(i => i.status === 'planned');
   const considering = ITEMS.filter(i => i.status === 'considering');
@@ -115,30 +122,24 @@ export function BuiltVsPlannedPage() {
     <div className="max-w-2xl mx-auto pb-16">
       <div className="pt-4 mb-10">
         <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--accent)' }}>
-          Transparency
+          {t('bvp.title')}
         </p>
-        <h1 className="text-3xl font-bold" style={{ color: 'var(--text)' }}>Built vs planned</h1>
-        <p className="text-base mt-2" style={{ color: 'var(--text-muted)' }}>
-          An honest checklist of what is live today, what is coming next, and what is under consideration.
-          No vaporware — if it says live, it is deployed and working.
-        </p>
+        <h1 className="text-3xl font-bold" style={{ color: 'var(--text)' }}>{t('bvp.title')}</h1>
+        <p className="text-base mt-2" style={{ color: 'var(--text-muted)' }}>{t('bvp.sub')}</p>
         <div className="flex gap-4 mt-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-          <span style={{ color: '#22c55e' }}>{live.length} live</span>
+          <span style={{ color: '#22c55e' }}>{live.length} {t('bvp.live').toLowerCase()}</span>
           <span>·</span>
-          <span style={{ color: '#4f9ef8' }}>{planned.length} planned</span>
+          <span style={{ color: '#4f9ef8' }}>{planned.length} {t('bvp.planned').toLowerCase()}</span>
           <span>·</span>
-          <span>{considering.length} considering</span>
+          <span>{considering.length} {t('bvp.considering').toLowerCase()}</span>
         </div>
       </div>
 
-      <Section title={`Live (${live.length})`}       items={live} />
-      <Section title={`Planned (${planned.length})`} items={planned} />
-      <Section title={`Considering (${considering.length})`} items={considering} />
+      <Section title={`${t('bvp.live')} (${live.length})`}             items={live}        liveLabel={t('bvp.live')} plannedLabel={t('bvp.planned')} consideringLabel={t('bvp.considering')} />
+      <Section title={`${t('bvp.planned')} (${planned.length})`}       items={planned}     liveLabel={t('bvp.live')} plannedLabel={t('bvp.planned')} consideringLabel={t('bvp.considering')} />
+      <Section title={`${t('bvp.considering')} (${considering.length})`} items={considering} liveLabel={t('bvp.live')} plannedLabel={t('bvp.planned')} consideringLabel={t('bvp.considering')} />
 
-      <p className="text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
-        "Planned" means we intend to build it. "Considering" means we are evaluating demand and feasibility.
-        Neither is a commitment or a timeline. This page is updated as work is done.
-      </p>
+      <p className="text-xs mt-4" style={{ color: 'var(--text-muted)' }}>{t('bvp.footer')}</p>
     </div>
   );
 }

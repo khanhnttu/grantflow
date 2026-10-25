@@ -1,115 +1,44 @@
 /**
- * Compare — fair comparison table: manual payouts vs platform escrow vs GrantFlow onchain.
- * No competitor names, no logos.
+ * Compare — fair comparison table. Fully i18n'd.
  */
 import { Check, X, Minus } from 'lucide-react';
+import { useI18n } from '@/hooks/useI18n';
+import type { StringKey } from '@/lib/i18n';
 
-interface Row {
-  label: string;
-  note?: string;
-  manual: string;
-  platformEscrow: string;
-  grantflow: string;
-}
+type MarkValue = string;
 
-const ROWS: Row[] = [
-  {
-    label: 'Funds locked upfront',
-    note: 'Prize pool is locked before judging begins',
-    manual: 'no',
-    platformEscrow: 'partial',
-    grantflow: 'yes',
-  },
-  {
-    label: 'Sponsor cannot withdraw after submissions',
-    manual: 'no',
-    platformEscrow: 'partial',
-    grantflow: 'yes',
-  },
-  {
-    label: 'Payout speed',
-    manual: 'Days to weeks',
-    platformEscrow: 'Hours to days',
-    grantflow: 'Instant after finalize',
-  },
-  {
-    label: 'Transparent on-chain record',
-    note: 'Every action verifiable by anyone',
-    manual: 'no',
-    platformEscrow: 'partial',
-    grantflow: 'yes',
-  },
-  {
-    label: 'Refund guarantee if cancelled',
-    manual: 'no',
-    platformEscrow: 'partial',
-    grantflow: 'yes',
-  },
-  {
-    label: 'Platform fee',
-    manual: '0%',
-    platformEscrow: 'Varies',
-    grantflow: '1% (capped 5%)',
-  },
-  {
-    label: 'Custody of funds',
-    manual: 'Sponsor wallet',
-    platformEscrow: 'Platform holds',
-    grantflow: 'Smart contract only',
-  },
-  {
-    label: 'Requires platform trust',
-    manual: 'yes',
-    platformEscrow: 'yes',
-    grantflow: 'no',
-  },
-  {
-    label: 'Ranked prizes (1st, 2nd, 3rd…)',
-    manual: 'yes',
-    platformEscrow: 'partial',
-    grantflow: 'yes',
-  },
-  {
-    label: 'Judge vote recorded on-chain',
-    manual: 'no',
-    platformEscrow: 'no',
-    grantflow: 'yes',
-  },
-  {
-    label: 'Open source and auditable',
-    manual: 'no',
-    platformEscrow: 'no',
-    grantflow: 'yes',
-  },
-];
-
-function Mark({ value }: { value: string }) {
+function Mark({ value }: { value: MarkValue }) {
   if (value === 'yes') return <Check size={15} className="mx-auto" style={{ color: '#22c55e' }} />;
-  if (value === 'no')  return <X    size={15} className="mx-auto" style={{ color: '#ef4444' }} />;
+  if (value === 'no')  return <X     size={15} className="mx-auto" style={{ color: '#ef4444' }} />;
   if (value === 'partial') return <Minus size={15} className="mx-auto" style={{ color: '#f59e0b' }} />;
   return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{value}</span>;
 }
 
 export function ComparePage() {
+  const { t } = useI18n();
+
+  const rows: { labelKey: StringKey; manual: MarkValue; escrow: MarkValue; gf: MarkValue }[] = [
+    { labelKey: 'compare.row.fundsLocked',     manual: t('compare.manual.fundsLocked'),     escrow: t('compare.escrow.fundsLocked'),     gf: t('compare.gf.fundsLocked') },
+    { labelKey: 'compare.row.payoutSpeed',     manual: t('compare.manual.payoutSpeed'),     escrow: t('compare.escrow.payoutSpeed'),     gf: t('compare.gf.payoutSpeed') },
+    { labelKey: 'compare.row.transparency',    manual: t('compare.manual.transparency'),    escrow: t('compare.escrow.transparency'),    gf: t('compare.gf.transparency') },
+    { labelKey: 'compare.row.refundGuarantee', manual: t('compare.manual.refundGuarantee'), escrow: t('compare.escrow.refundGuarantee'), gf: t('compare.gf.refundGuarantee') },
+    { labelKey: 'compare.row.fees',            manual: t('compare.manual.fees'),            escrow: t('compare.escrow.fees'),            gf: t('compare.gf.fees') },
+    { labelKey: 'compare.row.custody',         manual: t('compare.manual.custody'),         escrow: t('compare.escrow.custody'),         gf: t('compare.gf.custody') },
+  ];
+
   return (
     <div className="max-w-3xl mx-auto pb-16">
       <div className="pt-4 mb-8">
         <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--accent)' }}>
-          Comparison
+          {t('compare.title')}
         </p>
-        <h1 className="text-3xl font-bold" style={{ color: 'var(--text)' }}>
-          Manual payouts vs escrow vs onchain
-        </h1>
-        <p className="text-base mt-2" style={{ color: 'var(--text-muted)' }}>
-          A straightforward comparison of three ways to run a grant or bounty program.
-          No competitor names — judge the properties, not the brand.
-        </p>
+        <h1 className="text-3xl font-bold" style={{ color: 'var(--text)' }}>{t('compare.title')}</h1>
+        <p className="text-base mt-2" style={{ color: 'var(--text-muted)' }}>{t('compare.sub')}</p>
       </div>
 
-      {/* Legend */}
       <div className="flex gap-5 mb-6 text-xs" style={{ color: 'var(--text-muted)' }}>
-        <span className="flex items-center gap-1.5"><Check size={13} style={{ color: '#22c55e' }} /> Yes / native</span>
-        <span className="flex items-center gap-1.5"><Minus size={13} style={{ color: '#f59e0b' }} /> Partial / depends</span>
+        <span className="flex items-center gap-1.5"><Check size={13} style={{ color: '#22c55e' }} /> Yes</span>
+        <span className="flex items-center gap-1.5"><Minus size={13} style={{ color: '#f59e0b' }} /> Partial</span>
         <span className="flex items-center gap-1.5"><X size={13} style={{ color: '#ef4444' }} /> No</span>
       </div>
 
@@ -117,38 +46,28 @@ export function ComparePage() {
         <table className="w-full text-sm" style={{ color: 'var(--text)' }}>
           <thead>
             <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-              <th className="px-4 py-3 text-left font-medium text-xs" style={{ color: 'var(--text-muted)', width: '40%' }}>Property</th>
-              <th className="px-4 py-3 text-center font-medium text-xs" style={{ color: 'var(--text-muted)' }}>Manual payouts</th>
-              <th className="px-4 py-3 text-center font-medium text-xs" style={{ color: 'var(--text-muted)' }}>Platform escrow</th>
-              <th className="px-4 py-3 text-center font-semibold text-xs" style={{ color: 'var(--accent)' }}>GrantFlow onchain</th>
+              <th className="px-4 py-3 text-left font-medium text-xs" style={{ color: 'var(--text-muted)', width: '36%' }}>
+                {t('compare.col.method')}
+              </th>
+              <th className="px-4 py-3 text-center font-medium text-xs" style={{ color: 'var(--text-muted)' }}>{t('compare.col.manual')}</th>
+              <th className="px-4 py-3 text-center font-medium text-xs" style={{ color: 'var(--text-muted)' }}>{t('compare.col.escrow')}</th>
+              <th className="px-4 py-3 text-center font-semibold text-xs" style={{ color: 'var(--accent)' }}>{t('compare.col.grantflow')}</th>
             </tr>
           </thead>
           <tbody>
-            {ROWS.map((row, i) => (
-              <tr key={row.label}
-                style={{ borderBottom: i < ROWS.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <td className="px-4 py-3">
-                  <div className="font-medium text-sm" style={{ color: 'var(--text)' }}>{row.label}</div>
-                  {row.note && <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{row.note}</div>}
-                </td>
-                <td className="px-4 py-3 text-center"><Mark value={row.manual} /></td>
-                <td className="px-4 py-3 text-center"><Mark value={row.platformEscrow} /></td>
-                <td className="px-4 py-3 text-center"
-                  style={{ background: 'rgba(79,158,248,0.04)' }}>
-                  <Mark value={row.grantflow} />
+            {rows.map(({ labelKey, manual, escrow, gf }, i) => (
+              <tr key={labelKey} style={{ borderBottom: i < rows.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <td className="px-4 py-3 font-medium text-sm" style={{ color: 'var(--text)' }}>{t(labelKey)}</td>
+                <td className="px-4 py-3 text-center"><Mark value={manual} /></td>
+                <td className="px-4 py-3 text-center"><Mark value={escrow} /></td>
+                <td className="px-4 py-3 text-center" style={{ background: 'rgba(79,158,248,0.04)' }}>
+                  <Mark value={gf} />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {/* Disclaimer */}
-      <p className="mt-6 text-xs" style={{ color: 'var(--text-muted)' }}>
-        "Platform escrow" refers to a generic model where a centralised service holds funds on behalf
-        of participants. Specific implementations vary. This table reflects general properties of each
-        model, not any individual product. GrantFlow is experimental software — see the Terms page.
-      </p>
     </div>
   );
 }

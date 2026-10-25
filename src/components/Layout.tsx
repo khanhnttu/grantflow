@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { TokenUSDC } from '@web3icons/react';
 import { cn } from '@/lib/utils';
 import { CHAIN_LABEL, IS_MAINNET, GRANTFLOW_ADDRESS, addrUrl } from '@/lib/chainConfig';
+import { LogoMark as BrandLogoMark } from '@/components/BrandLogo';
 
 export type Page = 'home' | 'programs' | 'sponsor' | 'builder' | 'reviewer' | 'about' | 'docs' | 'terms';
 
@@ -32,12 +33,7 @@ interface LayoutProps {
 
 // ── LogoMark ───────────────────────────────────────────────────────────────
 function LogoMark({ size = 32 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect width="32" height="32" rx="9" fill="var(--accent)" />
-      <text x="16" y="23" fontFamily="'Space Grotesk', system-ui, sans-serif" fontSize="20" fontWeight="700" fill="white" textAnchor="middle">G</text>
-    </svg>
-  );
+  return <BrandLogoMark size={size} variant="light" />;
 }
 
 // ── CopyButton (footer) ────────────────────────────────────────────────────

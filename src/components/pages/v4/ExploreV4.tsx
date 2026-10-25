@@ -4,24 +4,26 @@
  * Fully readable without a wallet.
  */
 import { useState, useMemo } from 'react';
-import { LayoutGrid, List, RefreshCw, Trophy, ChevronLeft, ChevronRight as ChevronR, AlertCircle } from 'lucide-react';
+import { LayoutGrid, List, RefreshCw, Trophy, ChevronLeft, ChevronRight as ChevronR, AlertCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { LogoMark } from '@/components/BrandLogo';
 import { useProgramCount, useAllProgramsV4 } from '@/hooks/useGrantFlowV4';
+import { useProgramCount as useV3Count } from '@/hooks/useGrantFlow';
+import { useReadContracts } from 'wagmi';
+import { GRANTFLOW_ABI } from '@/lib/grantflow';
+import { useNetworkStore } from '@/hooks/useNetworkStore';
 import {
   computePhase, countdownLabel, totalPool, usdcToDisplay,
   PHASE_LABELS, PHASE_COLORS, CATEGORY_LABELS, PROGRAM_TYPE_LABELS,
   shortAddr, Phase,
   type PhaseValue,
 } from '@/lib/grantflowV4';
-import { useChainId } from 'wagmi';
 import { useI18n } from '@/hooks/useI18n';
 import type { StringKey } from '@/lib/i18n';
 
-const CHAIN_EXPLORER: Record<number, string> = {
-  5042002: 'https://explorer.testnet.arc.io',
-  5042:    'https://explorer.arc.io',
-};
-
 const PAGE_SIZE = 20;
+// Module-level snapshot of "now" — used in LegacyV3Section to classify ended programs.
+// A module-level value is acceptable to the React Compiler purity rule.
+const MODULE_NOW_SEC = BigInt(Math.floor(Date.now() / 1000));
 
 type SortKey = 'newest' | 'ending-soon' | 'biggest-pool';
 
@@ -54,8 +56,8 @@ export function ExploreV4({ search, onSelect }: Props) {
   const [sort, setSort]   = useState<SortKey>('newest');
 
   const { t } = useI18n();
-  const chainId  = useChainId();
-  const explorer = CHAIN_EXPLORER[chainId] ?? CHAIN_EXPLORER[5042002];
+  const { config } = useNetworkStore();
+  const explorer = config.explorerBase;
 
   const { data: countRaw, refetch, isLoading: countLoading, isError: countError } = useProgramCount();
   const count = Number(countRaw ?? 0);
@@ -248,6 +250,9 @@ export function ExploreV4({ search, onSelect }: Props) {
         </div>
       )}
 
+      {/* Legacy V3 programs */}
+      <LegacyV3Section explorer={explorer} />
+
       {/* Pagination */}
       {!isLoading && !isError && sorted.length > PAGE_SIZE && (
         <div className="flex items-center justify-between gap-3 pt-2" role="navigation" aria-label="Pagination">
@@ -355,6 +360,111 @@ function GridCard({ row, explorer, onSelect }: { row: RowType; explorer: string;
   );
 }
 
+// ── Legacy V3 section ──────────────────────────────────────────────────────────
+
+function LegacyV3Section({ explorer }: { explorer: string }) {
+  const [open, setOpen] = useState(false);
+  const { config } = useNetworkStore();
+  const v3Address = config.v3Address;
+  const chainId   = config.chainId;
+  const { data: countRaw } = useV3Count();
+  const count = Number(countRaw ?? 0);
+
+  const contracts = useMemo(() => {
+    if (count === 0) return [];
+    return Array.from({ length: count }, (_, i) => ({
+      address: v3Address,
+      abi: GRANTFLOW_ABI,
+      functionName: 'getProgram' as const,
+      args: [BigInt(i)] as const,
+      chainId,
+    }));
+  }, [count, v3Address, chainId]);
+
+  const { data: programs, isLoading } = useReadContracts({
+    contracts,
+    query: { enabled: open && count > 0 },
+  });
+
+  const nowSec = MODULE_NOW_SEC;
+
+  if (count === 0) return null;
+
+  return (
+    <div className="mt-4 rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-white/5"
+        style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}
+        aria-expanded={open}
+      >
+        <span className="flex items-center gap-2">
+          <span className="text-xs px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider" style={{ background: 'rgba(180,120,0,0.12)', color: '#b47800' }}>
+            Legacy v3
+          </span>
+          <span style={{ color: 'var(--text-muted)' }}>{count} program{count !== 1 ? 's' : ''} · read-only</span>
+        </span>
+        {open ? <ChevronUp size={14} aria-hidden /> : <ChevronDown size={14} aria-hidden />}
+      </button>
+
+      {open && (
+        <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+          {isLoading ? (
+            <div className="px-4 py-6 text-xs text-center" style={{ color: 'var(--text-muted)' }}>Loading…</div>
+          ) : programs?.map((r, i) => {
+            if (r.status !== 'success' || !r.result) return null;
+            const [name, prizeAmount, slots, deadline, sponsor, , , slotsUsed] = r.result as readonly [string, bigint, bigint, bigint, `0x${string}`, readonly `0x${string}`[], bigint, bigint, bigint, boolean];
+            const ended = deadline < nowSec;
+            const pool = prizeAmount * slots;
+            return (
+              <div key={i} className="px-4 py-3 flex flex-wrap items-center gap-3 text-xs" style={{ background: 'var(--surface-muted)' }}>
+                <span className="font-medium flex-1 min-w-0 truncate" style={{ color: 'var(--text)' }}>
+                  #{i} · {name}
+                </span>
+                <span className="tabular-nums" style={{ color: 'var(--accent)' }}>
+                  {usdcToDisplay(pool)} USDC
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  {slotsUsed.toString()}/{slots.toString()} slots
+                </span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold"
+                  style={ended
+                    ? { background: 'rgba(180,120,0,0.12)', color: '#b47800' }
+                    : { background: 'rgba(34,197,94,0.10)', color: '#16a34a' }
+                  }
+                >
+                  {ended ? 'Ended' : 'Open'}
+                </span>
+                <a
+                  href={`${explorer}/address/${sponsor}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:underline"
+                  style={{ color: 'var(--accent)' }}
+                  aria-label={`Sponsor ${sponsor} on explorer`}
+                >
+                  {shortAddr(sponsor)}
+                </a>
+                <a
+                  href={`${explorer}/address/${v3Address}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 hover:underline opacity-50 hover:opacity-100 transition-opacity"
+                  style={{ color: 'var(--text-muted)' }}
+                  aria-label="View V3 contract on explorer"
+                >
+                  <ExternalLink size={10} aria-hidden />
+                  V3
+                </a>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SkeletonList() {
   return (
     <div className="flex flex-col gap-2" aria-label="Loading programs" aria-busy="true">
@@ -367,8 +477,10 @@ function SkeletonList() {
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3" style={{ color: 'var(--text-muted)' }}>
-      <span className="text-4xl" role="img" aria-label="Trophy">🏆</span>
+    <div className="flex flex-col items-center justify-center py-16 gap-4" style={{ color: 'var(--muted)' }}>
+      <div className="opacity-30">
+        <LogoMark size={48} variant="light" />
+      </div>
       <p className="text-sm">{message}</p>
     </div>
   );

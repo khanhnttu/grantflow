@@ -14,7 +14,9 @@
     "check": "bash scripts/check.sh",
     "contracts:build": "forge build",
     "contracts:test": "forge test",
-    "test:kb": "bun test src/lib/helpKb.test.ts"
+    "test:kb": "bun test src/lib/helpKb.test.ts",
+    "check-i18n": "bun run src/lib/i18n/check-i18n.ts",
+    "test:i18n": "bun run src/lib/i18n/i18n.test.ts"
   },
   "dependencies": {
     "@circle-fin/adapter-viem-v2": "^1.19.2",

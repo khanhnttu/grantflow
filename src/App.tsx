@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/AppShell';
 import type { AppPage, ThemeMode } from '@/components/AppShell';
 import { HelpAssistant } from '@/components/HelpAssistant';
+import { WrongNetworkBanner, WrongNetworkProvider } from '@/components/NetworkUI';
 import { RoleProvider } from '@/components/RoleSwitcher';
 import { I18nProvider } from '@/hooks/useI18n';
+import { NetworkStoreProvider } from '@/hooks/useNetworkStore';
 import { AppFooter } from '@/components/AppFooter';
 import { AppSlimFooter } from '@/components/AppSlimFooter';
 import { LandingPage } from '@/components/pages/LandingPage';
@@ -18,6 +20,7 @@ import { ExploreV4 } from '@/components/pages/v4/ExploreV4';
 import { ProgramDetailV4 } from '@/components/pages/v4/ProgramDetailV4';
 import { CreateProgramV4 } from '@/components/pages/v4/CreateProgramV4';
 import { MySubmissionsV4 } from '@/components/pages/v4/MySubmissionsV4';
+import { MyProgramsV4 } from '@/components/pages/v4/MyProgramsV4';
 import { HowItWorksPage } from '@/components/pages/HowItWorksPage';
 import { ComparePage } from '@/components/pages/ComparePage';
 import { DevelopersPage } from '@/components/pages/DevelopersPage';
@@ -39,6 +42,7 @@ const PAGE_TITLES: Partial<Record<AppPage, string>> = {
   'v4-explore':       'Explore Programs · GrantFlow',
   'v4-create':        'Create Program · GrantFlow',
   'v4-submissions':   'My Submissions · GrantFlow',
+  'v4-my-programs':   'My Programs · GrantFlow',
   'how-it-works':     'How It Works · GrantFlow',
   compare:            'Compare · GrantFlow',
   developers:         'Developers · GrantFlow',
@@ -62,7 +66,7 @@ function parseHash(): { page: AppPage; programId?: number } {
   }
   const valid: AppPage[] = [
     'explore', 'sponsor', 'builder', 'reviewer', 'about', 'docs', 'terms', 'deploy', 'landing',
-    'v4-explore', 'v4-create', 'v4-submissions',
+    'v4-explore', 'v4-create', 'v4-submissions', 'v4-my-programs',
     'how-it-works', 'compare', 'developers', 'built-vs-planned',
   ];
   return valid.includes(hash as AppPage)
@@ -129,6 +133,8 @@ export default function App() {
         return <CreateProgramV4 onDone={() => navigate('v4-explore')} />;
       case 'v4-submissions':
         return <MySubmissionsV4 onSelect={id => navigate('v4-program', id)} />;
+      case 'v4-my-programs':
+        return <MyProgramsV4 onSelect={id => navigate('v4-program', id)} onCreateNew={() => navigate('v4-create')} />;
 
       // ── Marketing / info pages ──
       case 'how-it-works':
@@ -167,33 +173,40 @@ export default function App() {
   };
 
   return (
-    <I18nProvider>
-      <RoleProvider>
-        <AppShell
-          page={page}
-          onNav={navigate}
-          theme={theme}
-          onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
-          search={search}
-          onSearch={setSearch}
-          bare={isMarketing}
-        >
-          {renderPage()}
+    <NetworkStoreProvider>
+      <I18nProvider>
+        <RoleProvider>
+          <WrongNetworkProvider>
+            <AppShell
+              page={page}
+              onNav={navigate}
+              theme={theme}
+              onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+              search={search}
+              onSearch={setSearch}
+              bare={isMarketing}
+            >
+              {/* Wrong-network banner — only on app pages, not marketing */}
+              {!isMarketing && <WrongNetworkBanner />}
 
-          {/* Slim footer inside app shell (non-marketing pages only) */}
-          {!isMarketing && <AppSlimFooter />}
+              {renderPage()}
 
-          {/* Big footer appended after marketing page content, full-width */}
-          {isMarketing && page !== 'landing' && (
-            <AppFooter onNav={navigate} />
-          )}
-        </AppShell>
+              {/* Slim footer inside app shell (non-marketing pages only) */}
+              {!isMarketing && <AppSlimFooter />}
 
-        {/* Help assistant — not shown on deploy page */}
-        {page !== 'deploy' && (
-          <HelpAssistant onNav={p => navigate(p as AppPage)} />
-        )}
-      </RoleProvider>
-    </I18nProvider>
+              {/* Big footer appended after marketing page content, full-width */}
+              {isMarketing && page !== 'landing' && (
+                <AppFooter onNav={navigate} />
+              )}
+            </AppShell>
+
+            {/* Help assistant — not shown on deploy page */}
+            {page !== 'deploy' && (
+              <HelpAssistant onNav={p => navigate(p as AppPage)} />
+            )}
+          </WrongNetworkProvider>
+        </RoleProvider>
+      </I18nProvider>
+    </NetworkStoreProvider>
   );
 }

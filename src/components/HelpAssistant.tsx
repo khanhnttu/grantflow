@@ -4,9 +4,11 @@
  * Supports English and Vietnamese.
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, X, Send, ExternalLink, ChevronRight } from 'lucide-react';
+import { X, Send, ExternalLink, ChevronRight } from 'lucide-react';
+import { LogoMark } from '@/components/BrandLogo';
 import { KB, findEntry } from '@/lib/helpKb';
 import type { KbEntry, Lang } from '@/lib/helpKb';
+import { useI18n } from '@/hooks/useI18n';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -113,6 +115,7 @@ function AnswerBubble({ msg, onNav }: { msg: Msg; onNav: (t: string) => void }) 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function HelpAssistant({ onNav }: { onNav: (page: string) => void }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState<Msg[]>([mkBot(GREET_EN)]);
   const [input, setInput] = useState('');
@@ -185,8 +188,8 @@ export function HelpAssistant({ onNav }: { onNav: (page: string) => void }) {
         <div
           className="fixed z-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden"
           style={{
-            bottom: '6rem',   /* above bubble (3.25rem) + 16px gap + badge clearance */
-            right: '1.25rem',
+            bottom: '152px',  /* above bubble: 88px + 52px height + 12px gap */
+            right: '20px',
             left: 'auto',
             width: 'min(380px, calc(100vw - 2.5rem))',
             height: 'min(520px, calc(100dvh - 8rem))',
@@ -200,18 +203,13 @@ export function HelpAssistant({ onNav }: { onNav: (page: string) => void }) {
             style={{ background: 'var(--ha-header)', borderBottom: '1px solid var(--ha-border)' }}
           >
             <div className="flex items-center gap-2">
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                style={{ background: 'var(--accent)' }}
-              >
-                G
-              </div>
+              <LogoMark size={28} variant="light" />
               <div>
                 <p className="text-sm font-semibold leading-none" style={{ color: 'var(--ha-ink)' }}>
-                  GrantFlow Assistant
+                  {t('help.title')}
                 </p>
                 <p className="text-[10px] mt-0.5" style={{ color: 'var(--ha-muted)' }}>
-                  Help assistant — answers from GrantFlow docs
+                  {t('help.poweredBy')}
                 </p>
               </div>
             </div>
@@ -290,7 +288,7 @@ export function HelpAssistant({ onNav }: { onNav: (page: string) => void }) {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="Ask in English or Vietnamese…"
+              placeholder={t('help.inputPh')}
               className="flex-1 rounded-xl px-3 py-2 text-sm outline-none transition-all"
               style={{
                 background: 'var(--ha-input)',
@@ -319,17 +317,18 @@ export function HelpAssistant({ onNav }: { onNav: (page: string) => void }) {
         onClick={() => setOpen(v => !v)}
         className="fixed z-50 flex items-center justify-center rounded-full shadow-xl transition-all hover:scale-105 active:scale-95"
         style={{
-          bottom: '1.5rem',
-          right: '1.25rem',
+          bottom: '88px',
+          right: '20px',
           left: 'auto',
           width: '3.25rem',
           height: '3.25rem',
           background: 'var(--accent)',
           color: '#fff',
         }}
-        aria-label={open ? 'Close help assistant' : 'Open help assistant'}
+        title={open ? t('help.close') : 'Help'}
+        aria-label={open ? t('help.close') : t('help.bubble.label')}
       >
-        {open ? <X size={20} /> : <MessageCircle size={22} />}
+        {open ? <X size={20} /> : <LogoMark size={30} variant="light" />}
       </button>
     </>
   );

@@ -1,19 +1,21 @@
 /**
  * Wagmi hooks for GrantFlowV4.
  */
-import { useReadContract, useReadContracts, useWriteContract, useAccount, useChainId, usePublicClient } from 'wagmi';
-import { useEffect, useState } from 'react';
+import { useReadContract, useReadContracts, useWriteContract, useAccount, usePublicClient } from 'wagmi';
+import { useEffect, useState, useCallback } from 'react';
 import { parseAbiItem } from 'viem';
-import { GRANTFLOW_V4_ABI, ERC20_ABI, getV4Address, USDC_ADDRESS } from '@/lib/grantflowV4';
+import { GRANTFLOW_V4_ABI, ERC20_ABI } from '@/lib/grantflowV4';
+import { useNetworkStore } from '@/hooks/useNetworkStore';
+import { isAlreadyInFlight } from '@/hooks/useTxRecovery';
 
 function useV4Address() {
-  const chainId = useChainId();
-  return getV4Address(chainId);
+  const { config } = useNetworkStore();
+  return config.v4Address;
 }
 
 function useUsdcAddress() {
-  const chainId = useChainId();
-  return USDC_ADDRESS[chainId] ?? USDC_ADDRESS[5042002];
+  const { config } = useNetworkStore();
+  return config.usdcAddress;
 }
 
 // ── Read ──────────────────────────────────────────────────────────────────────
@@ -23,9 +25,27 @@ export function useProgramCount() {
   return useReadContract({ address, abi: GRANTFLOW_V4_ABI, functionName: 'programCount' });
 }
 
+/**
+ * feeBps — reads from the selected app network RPC, not the wallet chain.
+ * This ensures the fee displays correctly even when the wallet is on the wrong chain.
+ */
 export function useFeeBps() {
-  const address = useV4Address();
-  return useReadContract({ address, abi: GRANTFLOW_V4_ABI, functionName: 'feeBps' });
+  const { appClient, config } = useNetworkStore();
+  const address = config.v4Address;
+  const [feeBps, setFeeBps] = useState<bigint | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    appClient.readContract({
+      address,
+      abi: GRANTFLOW_V4_ABI,
+      functionName: 'feeBps',
+    }).then(v => { if (!cancelled) setFeeBps(v); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [appClient, address]);
+
+  return { data: feeBps };
 }
 
 export function useProgramV4(programId: number | undefined) {
@@ -144,17 +164,31 @@ export function useUsdcBalance() {
   });
 }
 
+/**
+ * USDC allowance — reads from the selected app network RPC, not the wallet chain.
+ * Returns { data, refetch } where refetch() re-reads immediately from the chain.
+ */
 export function useUsdcAllowance() {
+  const { appClient, config } = useNetworkStore();
   const { address: account } = useAccount();
-  const v4 = useV4Address();
-  const usdcAddr = useUsdcAddress();
-  return useReadContract({
-    address: usdcAddr,
-    abi: ERC20_ABI,
-    functionName: 'allowance',
-    args: account ? [account, v4] : undefined,
-    query: { enabled: !!account },
-  });
+  const v4 = config.v4Address;
+  const usdcAddr = config.usdcAddress;
+  const [data, setData] = useState<bigint | undefined>(undefined);
+
+  const refetch = useCallback(() => {
+    if (!account) return Promise.resolve();
+    return appClient.readContract({
+      address: usdcAddr,
+      abi: ERC20_ABI,
+      functionName: 'allowance',
+      args: [account, v4],
+    }).then(v => { setData(v); })
+      .catch(() => {});
+  }, [appClient, usdcAddr, v4, account]);
+
+  useEffect(() => { void refetch(); }, [refetch]);
+
+  return { data, refetch };
 }
 
 // Batch-read all programs 0..count-1
@@ -189,34 +223,80 @@ export function useAllSubmissionsV4(programId: number | undefined, count: number
 
 // ── Write ─────────────────────────────────────────────────────────────────────
 
+
+
 export function useV4Write() {
   const { writeContractAsync, isPending, error } = useWriteContract();
   const address = useV4Address();
   const usdcAddr = useUsdcAddress();
+  const { appClient } = useNetworkStore();
 
-  const approveUsdc = async (amount: bigint) =>
-    writeContractAsync({ address: usdcAddr, abi: ERC20_ABI, functionName: 'approve', args: [address, amount] });
+  /**
+   * Send a write call. If the wallet throws "already known" / "nonce too low" /
+   * "replacement underpriced", that means the tx was already broadcast — we treat
+   * it as in-flight and poll the receipt rather than surfacing an error.
+   * Returns the tx hash on success.
+   */
+  const sendAndConfirm = useCallback(async (
+    call: () => Promise<`0x${string}`>,
+    onHash?: (hash: `0x${string}`) => void,
+  ): Promise<`0x${string}`> => {
+    let hash: `0x${string}`;
+    try {
+      hash = await call();
+    } catch (err) {
+      if (!isAlreadyInFlight(err)) throw err;
+      // Tx is already broadcast — we don't have the hash here, so we rely on the
+      // caller (CreateProgramV4) to poll the allowance / ProgramCreated event instead.
+      // Rethrow a sentinel so the caller knows to switch to poll mode.
+      throw Object.assign(new Error('__already_in_flight__'), { alreadyInFlight: true });
+    }
+    if (onHash) onHash(hash);
+    // Wait for confirmation via the app-chain RPC (independent of wallet chain).
+    const receipt = await appClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== 'success') throw new Error('Transaction reverted onchain.');
+    return hash;
+  }, [appClient]);
 
-  const createProgram = async (args: Parameters<typeof writeContractAsync>[0]['args']) =>
-    writeContractAsync({ address, abi: GRANTFLOW_V4_ABI, functionName: 'createProgram', args: args as never });
+  const approveUsdc = (amount: bigint) =>
+    sendAndConfirm(() => writeContractAsync({
+      address: usdcAddr, abi: ERC20_ABI, functionName: 'approve', args: [address, amount],
+    }));
 
-  const submit = async (programId: bigint, projectContract: `0x${string}`, metadataURI: string) =>
-    writeContractAsync({ address, abi: GRANTFLOW_V4_ABI, functionName: 'submit', args: [programId, projectContract, metadataURI] });
+  const createProgram = (args: Parameters<typeof writeContractAsync>[0]['args']) =>
+    sendAndConfirm(() => writeContractAsync({
+      address, abi: GRANTFLOW_V4_ABI, functionName: 'createProgram', args: args as never,
+    }));
 
-  const vote = async (programId: bigint, submissionId: bigint) =>
-    writeContractAsync({ address, abi: GRANTFLOW_V4_ABI, functionName: 'vote', args: [programId, submissionId] });
+  const submit = (programId: bigint, projectContract: `0x${string}`, metadataURI: string) =>
+    sendAndConfirm(() => writeContractAsync({
+      address, abi: GRANTFLOW_V4_ABI, functionName: 'submit', args: [programId, projectContract, metadataURI],
+    }));
 
-  const finalize = async (programId: bigint) =>
-    writeContractAsync({ address, abi: GRANTFLOW_V4_ABI, functionName: 'finalize', args: [programId] });
+  const vote = (programId: bigint, submissionId: bigint) =>
+    sendAndConfirm(() => writeContractAsync({
+      address, abi: GRANTFLOW_V4_ABI, functionName: 'vote', args: [programId, submissionId],
+    }));
 
-  const claim = async () =>
-    writeContractAsync({ address, abi: GRANTFLOW_V4_ABI, functionName: 'claim', args: [] });
+  const finalize = (programId: bigint) =>
+    sendAndConfirm(() => writeContractAsync({
+      address, abi: GRANTFLOW_V4_ABI, functionName: 'finalize', args: [programId],
+    }));
 
-  const reclaim = async (programId: bigint) =>
-    writeContractAsync({ address, abi: GRANTFLOW_V4_ABI, functionName: 'reclaim', args: [programId] });
+  const claim = () =>
+    sendAndConfirm(() => writeContractAsync({
+      address, abi: GRANTFLOW_V4_ABI, functionName: 'claim', args: [],
+    }));
 
-  const cancel = async (programId: bigint) =>
-    writeContractAsync({ address, abi: GRANTFLOW_V4_ABI, functionName: 'cancel', args: [programId] });
+  const reclaim = (programId: bigint) =>
+    sendAndConfirm(() => writeContractAsync({
+      address, abi: GRANTFLOW_V4_ABI, functionName: 'reclaim', args: [programId],
+    }));
+
+  const cancel = (programId: bigint) =>
+    sendAndConfirm(() => writeContractAsync({
+      address, abi: GRANTFLOW_V4_ABI, functionName: 'cancel', args: [programId],
+    }));
 
   return { approveUsdc, createProgram, submit, vote, finalize, claim, reclaim, cancel, isPending, error };
 }

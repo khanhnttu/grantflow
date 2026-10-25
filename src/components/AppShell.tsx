@@ -1,25 +1,26 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ConnectKitButton } from 'connectkit';
 import {
   Compass, PlusCircle, FileText, BookOpen,
   Sun, Moon, Menu, ChevronRight, Github,
   ExternalLink, Code2, Scale, GitCompare,
   Cpu, List, PanelLeftClose, PanelLeftOpen,
-  MoreHorizontal, HelpCircle,
+  MoreHorizontal, HelpCircle, LayoutList,
 } from 'lucide-react';
-import { GRANTFLOW_ADDRESS } from '@/lib/grantflow';
-import { ACTIVE_CHAIN_ID } from '@/lib/chainConfig';
 import { RoleSwitcher, useRole } from '@/components/RoleSwitcher';
-import { useNetworkHealth } from '@/hooks/useNetworkHealth';
+import { NetworkDropdown } from '@/components/NetworkUI';
+import { useNetworkStore } from '@/hooks/useNetworkStore';
 import { useI18n } from '@/hooks/useI18n';
-import type { Lang } from '@/lib/i18n';
+import type { Lang } from '@/lib/i18n/index';
+import { LogoMark } from '@/components/BrandLogo';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type AppPage =
   | 'landing' | 'explore' | 'sponsor' | 'builder' | 'reviewer'
   | 'program' | 'about' | 'docs' | 'terms' | 'deploy'
-  | 'v4-explore' | 'v4-program' | 'v4-create' | 'v4-submissions'
+  | 'v4-explore' | 'v4-program' | 'v4-create' | 'v4-submissions' | 'v4-my-programs'
   | 'how-it-works' | 'compare' | 'developers' | 'built-vs-planned';
 
 export type ThemeMode = 'light' | 'dark';
@@ -39,10 +40,6 @@ interface AppShellProps {
 // ── Short address ─────────────────────────────────────────────────────────────
 const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 
-const EXPLORER = ACTIVE_CHAIN_ID === 5042
-  ? 'https://explorer.arc.io'
-  : 'https://explorer.testnet.arc.io';
-
 // ── Role-aware primary nav (sidebar) ─────────────────────────────────────────
 const NAV_HACKER = [
   { id: 'v4-explore'     as AppPage, label: 'nav.explore',     icon: Compass    },
@@ -50,9 +47,10 @@ const NAV_HACKER = [
   { id: 'docs'           as AppPage, label: 'nav.docs',        icon: BookOpen   },
 ];
 const NAV_ORGANIZER = [
-  { id: 'v4-explore' as AppPage, label: 'nav.explore', icon: Compass    },
-  { id: 'v4-create'  as AppPage, label: 'nav.create',  icon: PlusCircle },
-  { id: 'docs'       as AppPage, label: 'nav.docs',    icon: BookOpen   },
+  { id: 'v4-explore'     as AppPage, label: 'nav.explore',     icon: Compass     },
+  { id: 'v4-my-programs' as AppPage, label: 'nav.myPrograms',  icon: LayoutList  },
+  { id: 'v4-create'      as AppPage, label: 'nav.create',      icon: PlusCircle  },
+  { id: 'docs'           as AppPage, label: 'nav.docs',        icon: BookOpen    },
 ];
 const NAV_JUDGE = [
   { id: 'v4-explore'   as AppPage, label: 'nav.judge', icon: Scale    },
@@ -69,18 +67,7 @@ const GUIDE_NAV = [
   { id: 'terms'           as AppPage, label: 'nav.terms',         icon: FileText   },
 ] as const;
 
-// ── Logo mark SVG ─────────────────────────────────────────────────────────────
-function LogoMark({ size = 28 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden>
-      <rect width="28" height="28" rx="7" fill="#4f9ef8" />
-      <path
-        d="M14 6C9.58 6 6 9.58 6 14s3.58 8 8 8c2.13 0 4.07-.83 5.52-2.19l-1.42-1.42A5.96 5.96 0 0 1 14 20a6 6 0 0 1 0-12c2.03 0 3.82 1.01 4.9 2.56H16v2h6V7h-2v1.97A7.97 7.97 0 0 0 14 6Zm1 7h-2v2h2v-2Z"
-        fill="#fff"
-      />
-    </svg>
-  );
-}
+// LogoMark is imported from BrandLogo
 
 // ── Language switcher ─────────────────────────────────────────────────────────
 function LangSwitcher() {
@@ -105,17 +92,37 @@ function LangSwitcher() {
 // ── More dropdown (Guide / secondary links) ───────────────────────────────────
 function MoreMenu({ page, onNav }: { page: AppPage; onNav: (p: AppPage) => void }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [panelPos, setPanelPos] = useState<{ top: number; right: number; minWidth: number }>({ top: 0, right: 0, minWidth: 200 });
+  const ref      = useRef<HTMLDivElement>(null);
+  const btnRef   = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const { t } = useI18n();
 
-  // Close on outside click
+  useEffect(() => {
+    if (!open || !btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    setPanelPos({
+      top: r.bottom + 6,
+      right: window.innerWidth - r.right,
+      minWidth: Math.max(r.width, 200),
+    });
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    const close = (e: MouseEvent) => {
+      const t = e.target as Node;
+      const insideBtn   = ref.current?.contains(t) ?? false;
+      const insidePanel = panelRef.current?.contains(t) ?? false;
+      if (!insideBtn && !insidePanel) setOpen(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const closeOnScroll = () => setOpen(false);
+    document.addEventListener('mousedown', close);
+    window.addEventListener('scroll', closeOnScroll, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', close);
+      window.removeEventListener('scroll', closeOnScroll);
+    };
   }, [open]);
 
   const guidePages: AppPage[] = GUIDE_NAV.map(g => g.id);
@@ -124,6 +131,7 @@ function MoreMenu({ page, onNav }: { page: AppPage; onNav: (p: AppPage) => void 
   return (
     <div ref={ref} className="relative hidden sm:block">
       <button
+        ref={btnRef}
         onClick={() => setOpen(v => !v)}
         className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 flex-shrink-0"
         style={{
@@ -139,10 +147,16 @@ function MoreMenu({ page, onNav }: { page: AppPage; onNav: (p: AppPage) => void 
         <span className="hidden md:inline">Guide</span>
       </button>
 
-      {open && (
+      {open && createPortal(
         <div
-          className="absolute right-0 top-full mt-1.5 rounded-xl shadow-xl z-50 py-1 min-w-[200px]"
+          ref={panelRef}
+          className="rounded-xl shadow-xl py-1"
           style={{
+            position: 'fixed',
+            top: panelPos.top,
+            right: panelPos.right,
+            minWidth: panelPos.minWidth,
+            zIndex: 99999,
             background: 'var(--surface-strong)',
             border: '1px solid var(--border)',
           }}
@@ -170,7 +184,8 @@ function MoreMenu({ page, onNav }: { page: AppPage; onNav: (p: AppPage) => void 
               </button>
             );
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -187,6 +202,10 @@ function Sidebar({
 }) {
   const { role } = useRole();
   const { t } = useI18n();
+  const { config } = useNetworkStore();
+  const EXPLORER = config.explorerBase;
+  const GRANTFLOW_V4_ADDRESS = config.v4Address;
+  const GRANTFLOW_ADDRESS    = config.v3Address;
   const NAV = role === 'organizer' ? NAV_ORGANIZER : role === 'judge' ? NAV_JUDGE : NAV_HACKER;
 
   return (
@@ -213,7 +232,7 @@ function Sidebar({
           onKeyDown={e => e.key === 'Enter' && onNav('landing')}
           aria-label="Go to home"
         >
-          <LogoMark />
+          <LogoMark size={28} variant="light" />
           <span className="display font-semibold text-white text-[15px] tracking-tight">
             GrantFlow
           </span>
@@ -265,18 +284,29 @@ function Sidebar({
           style={{ borderColor: 'var(--sidebar-border)' }}
         >
           <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5 opacity-50" style={{ color: 'var(--sidebar-fg)' }}>
-            Contract
+            Contract V4
           </p>
+          <a
+            href={`${EXPLORER}/address/${GRANTFLOW_V4_ADDRESS}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80 mb-1"
+            style={{ color: 'var(--sidebar-accent)' }}
+            aria-label={`View V4 contract ${GRANTFLOW_V4_ADDRESS} on explorer`}
+          >
+            <ExternalLink size={10} aria-hidden />
+            {short(GRANTFLOW_V4_ADDRESS)}
+          </a>
           <a
             href={`${EXPLORER}/address/${GRANTFLOW_ADDRESS}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80 mb-3"
-            style={{ color: 'var(--sidebar-accent)' }}
-            aria-label={`View contract ${GRANTFLOW_ADDRESS} on explorer`}
+            className="flex items-center gap-1.5 font-mono text-[10px] transition-colors hover:opacity-70 mb-3 opacity-50"
+            style={{ color: 'var(--sidebar-fg)' }}
+            aria-label={`View legacy V3 contract ${GRANTFLOW_ADDRESS} on explorer`}
           >
-            <ExternalLink size={10} aria-hidden />
-            {short(GRANTFLOW_ADDRESS)}
+            <ExternalLink size={9} aria-hidden />
+            Legacy v3 · {short(GRANTFLOW_ADDRESS)}
           </a>
           <a
             href="https://github.com/khanhnttu/grantflow"
@@ -292,43 +322,6 @@ function Sidebar({
         </div>
       </aside>
     </>
-  );
-}
-
-// ── Trust pill ────────────────────────────────────────────────────────────────
-function TrustPill() {
-  const isMainnet = ACTIVE_CHAIN_ID === 5042;
-  const { blockNumber, health } = useNetworkHealth();
-  const { t } = useI18n();
-
-  const dotColor = health === 'healthy' ? '#22c55e' : health === 'slow' ? '#f59e0b' : '#ef4444';
-  const bgColor   = isMainnet ? 'rgba(79,158,248,0.10)' : 'rgba(5,150,105,0.10)';
-  const textColor = isMainnet ? '#4f9ef8' : '#059669';
-  const borderColor = isMainnet ? 'rgba(79,158,248,0.22)' : 'rgba(5,150,105,0.22)';
-
-  const networkLabel = isMainnet ? t('trust.mainnet') : t('trust.testnet');
-  const healthLabel  = health === 'healthy' ? t('trust.healthy') : health === 'slow' ? t('trust.slow') : t('trust.down');
-
-  return (
-    <div
-      className="hidden md:flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold select-none flex-shrink-0"
-      style={{ background: bgColor, color: textColor, border: `1px solid ${borderColor}` }}
-      title={`${networkLabel} · ${healthLabel}`}
-      role="status"
-      aria-label={`Network: ${networkLabel}${blockNumber !== null ? `, block ${blockNumber.toString()}` : ''}, ${healthLabel}`}
-    >
-      <span
-        className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${health === 'healthy' ? 'animate-pulse' : ''}`}
-        style={{ background: dotColor }}
-        aria-hidden
-      />
-      {networkLabel}
-      {blockNumber !== null && (
-        <span className="opacity-60 font-mono text-[10px] ml-0.5">
-          #{blockNumber.toString()}
-        </span>
-      )}
-    </div>
   );
 }
 
@@ -365,8 +358,8 @@ function TopBar({
             color: 'var(--muted)',
           }}
           onClick={onToggleSidebar}
-          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={sidebarCollapsed ? t('topbar.expand') : t('topbar.collapse')}
+          title={sidebarCollapsed ? t('topbar.expand') : t('topbar.collapse')}
         >
           {sidebarCollapsed
             ? <PanelLeftOpen size={16} aria-hidden />
@@ -398,7 +391,7 @@ function TopBar({
           className="flex items-center gap-2 mr-2 flex-shrink-0"
           aria-label="Go to home"
         >
-          <LogoMark size={24} />
+          <LogoMark size={24} variant="light" />
           <span className="display font-semibold text-sm tracking-tight" style={{ color: 'var(--ink)' }}>
             GrantFlow
           </span>
@@ -431,8 +424,8 @@ function TopBar({
         {/* Role switcher (app pages only) */}
         {!bare && <RoleSwitcher />}
 
-        {/* Trust pill */}
-        <TrustPill />
+        {/* Network dropdown (replaces static TrustPill) */}
+        <NetworkDropdown />
 
         {/* Guide / More dropdown */}
         <MoreMenu page={page} onNav={onNav} />
@@ -470,23 +463,6 @@ function TopBar({
         >
           {theme === 'dark' ? <Sun size={15} aria-hidden /> : <Moon size={15} aria-hidden />}
         </button>
-
-        {/* Docs guide button (app pages only) */}
-        {!bare && (
-          <button
-            onClick={() => onNav('docs')}
-            className="hidden lg:flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-2 flex-shrink-0"
-            style={{
-              background: 'var(--surface-muted)',
-              border: '1px solid var(--border)',
-              color: 'var(--muted)',
-            }}
-            aria-label="Open documentation"
-          >
-            <FileText size={13} aria-hidden />
-            {t('nav.docs')}
-          </button>
-        )}
 
         {/* Wallet */}
         <ConnectKitButton />
@@ -530,7 +506,7 @@ export function AppShell({
           onToggleSidebar={() => {}}
           bare
         />
-        <main id="main-content" tabIndex={-1} className="px-4 sm:px-6" style={{ flex: 1 }}>
+        <main id="main-content" tabIndex={-1} style={{ flex: 1 }}>
           {children}
         </main>
       </div>

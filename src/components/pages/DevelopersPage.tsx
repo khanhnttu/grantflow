@@ -3,9 +3,11 @@
  */
 import { useState } from 'react';
 import { Copy, Check, ExternalLink } from 'lucide-react';
+import { useI18n } from '@/hooks/useI18n';
 
 function CopyBtn({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
+  const { t } = useI18n();
   const copy = () => {
     void navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -16,9 +18,9 @@ function CopyBtn({ text }: { text: string }) {
     <button onClick={copy}
       className="flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-all"
       style={{ background: copied ? 'rgba(34,197,94,0.1)' : 'var(--surface)', color: copied ? '#22c55e' : 'var(--text-muted)', border: '1px solid var(--border)' }}
-      aria-label="Copy">
+      aria-label={t('ask.copyAddress')}>
       {copied ? <Check size={11} /> : <Copy size={11} />}
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? t('ask.copied') : t('ask.copyAddress')}
     </button>
   );
 }
@@ -163,21 +165,20 @@ const logs = await client.getLogs({
 })`;
 
 export function DevelopersPage() {
+  const { t } = useI18n();
   return (
     <div className="max-w-3xl mx-auto pb-16">
       <div className="pt-4 mb-10">
         <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--accent)' }}>
-          For builders
+          {t('dev.title')}
         </p>
-        <h1 className="text-3xl font-bold" style={{ color: 'var(--text)' }}>Developers</h1>
-        <p className="text-base mt-2" style={{ color: 'var(--text-muted)' }}>
-          Contract addresses, events, functions, and copy-paste viem snippets.
-        </p>
+        <h1 className="text-3xl font-bold" style={{ color: 'var(--text)' }}>{t('dev.title')}</h1>
+        <p className="text-base mt-2" style={{ color: 'var(--text-muted)' }}>{t('dev.sub')}</p>
       </div>
 
       {/* Contracts */}
       <section className="mb-10">
-        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>Contract addresses</h2>
+        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>{t('dev.contracts')}</h2>
         <div className="space-y-3">
           {CONTRACTS.map(c => (
             <div key={c.address} className="rounded-xl px-4 py-3"
@@ -210,7 +211,7 @@ export function DevelopersPage() {
 
       {/* Source */}
       <section className="mb-10">
-        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>Source and tests</h2>
+        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>{t('dev.source')}</h2>
         <div className="flex gap-3">
           <a href="https://github.com/khanhnttu/grantflow/blob/main/contracts/GrantFlowV4.sol"
             target="_blank" rel="noreferrer"
@@ -229,7 +230,7 @@ export function DevelopersPage() {
 
       {/* Events */}
       <section className="mb-10">
-        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>Events</h2>
+        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>{t('dev.events')}</h2>
         <div className="space-y-2">
           {EVENTS.map(ev => (
             <div key={ev.name} className="rounded-xl px-4 py-3"
@@ -245,7 +246,7 @@ export function DevelopersPage() {
 
       {/* Functions */}
       <section className="mb-10">
-        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>Key functions</h2>
+        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>{t('dev.functions')}</h2>
         <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border)' }}>
           <table className="w-full text-xs" style={{ color: 'var(--text)' }}>
             <thead>
@@ -278,12 +279,12 @@ export function DevelopersPage() {
 
       {/* Snippets */}
       <section className="mb-10">
-        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>Read a program (viem)</h2>
+        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>{t('dev.readProgram')}</h2>
         <CodeBlock code={READ_SNIPPET} />
       </section>
 
       <section>
-        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>Listen for PrizeAssigned / Claimed</h2>
+        <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>{t('dev.listenEvents')}</h2>
         <CodeBlock code={LISTEN_SNIPPET} />
       </section>
     </div>
