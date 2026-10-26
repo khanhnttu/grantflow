@@ -161,45 +161,58 @@ export async function fetchProgram(chain: Chain, id: number, version: 'v5' | 'v4
 
   try {
     if (version === 'v5') {
-      const result = await client.readContract({
+      const raw = await client.readContract({
         address,
         abi: V5_GET_PROGRAM_ABI,
         functionName: 'getProgram',
         args: [BigInt(id)],
       });
-      // result is typed as a readonly tuple by viem's const ABI inference
-      const { name, description, sponsor, prizes, totalDeposited, submissionDeadline, judgingDeadline, exists, finalized, cancelled } = result;
-      console.log(`[chain] v5 raw: exists=${exists} name="${name}" prizes=${JSON.stringify(prizes?.map(String))} totalDeposited=${totalDeposited}`);
+      // viem returns a positional array — destructure by index matching the ABI order:
+      // (name, description, sponsor, prizes[], totalDeposited,
+      //  submissionDeadline, judgingDeadline, programType, category,
+      //  exists, finalized, cancelled)
+      const [name, description, sponsor, prizes, totalDeposited,
+             submissionDeadline, judgingDeadline, , , exists, finalized, cancelled] = raw as readonly [
+        string, string, string, readonly bigint[], bigint,
+        bigint, bigint, number, number,
+        boolean, boolean, boolean,
+      ];
+      console.log(`[chain] v5 raw: exists=${exists} name="${name}" prizes=${JSON.stringify((prizes as bigint[]).map(String))} totalDeposited=${totalDeposited}`);
       if (!exists) return null;
 
       // Prize pool: totalDeposited if > 0, else sum of prizes[]
-      const pool = totalDeposited > 0n
-        ? totalDeposited
-        : (prizes ?? []).reduce((acc: bigint, p: bigint) => acc + p, 0n);
-      const { sponsorName, sponsorWebsite, desc } = parseSponsorMeta(description);
+      const pool = (totalDeposited as bigint) > 0n
+        ? totalDeposited as bigint
+        : (prizes as readonly bigint[]).reduce((acc, p) => acc + p, 0n);
+      const { sponsorName, sponsorWebsite, desc } = parseSponsorMeta(description as string);
       return {
         id, chain, version,
-        name,
-        description: desc || description,
-        sponsor,
+        name: name as string,
+        description: (desc || description) as string,
+        sponsor: sponsor as string,
         pool: formatUsdc(pool),
         poolRaw: pool.toString(),
         subDeadline: Number(submissionDeadline),
         judgeDeadline: Number(judgingDeadline),
-        finalized,
-        cancelled,
+        finalized: finalized as boolean,
+        cancelled: cancelled as boolean,
         sponsorName,
         sponsorWebsite,
       };
     } else {
       // V4
-      const result = await client.readContract({
+      const raw = await client.readContract({
         address,
         abi: V4_GET_PROGRAM_ABI,
         functionName: 'getProgram',
         args: [BigInt(id)],
       });
-      const { name, description, sponsor, prizePool, submissionDeadline, judgingDeadline, finalized, cancelled } = result;
+      // Positional destructure: (name, description, sponsor, prizePool,
+      //  submissionDeadline, judgingDeadline, finalized, cancelled)
+      const [name, description, sponsor, prizePool,
+             submissionDeadline, judgingDeadline, finalized, cancelled] = raw as readonly [
+        string, string, string, bigint, bigint, bigint, boolean, boolean,
+      ];
       console.log(`[chain] v4 raw: name="${name}" pool=${prizePool}`);
       if (!name) return null;
       const { sponsorName, sponsorWebsite, desc } = parseSponsorMeta(description);
