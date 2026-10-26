@@ -174,11 +174,13 @@ function AppInner() {
 
   const navigate = (p: AppPage, id?: number) => {
     if (p === 'program' && id !== undefined) {
-      window.location.hash = `program/${id}`;
+      window.history.pushState({}, '', `/#program/${id}`);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
       // programNetwork: undefined — not a V5 path route, no chain lock
       setRoute({ page: p, programId: id });
     } else if (p === 'v4-program' && id !== undefined) {
-      window.location.hash = `v4-program/${id}`;
+      window.history.pushState({}, '', `/#v4-program/${id}`);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
       setRoute({ page: p, programId: id });
     } else if (p === 'v5-program' && id !== undefined) {
       // Use clean path URL for V5 programs — encode the currently active chain
@@ -189,7 +191,13 @@ function AppInner() {
     } else {
       // Any non-program navigation: clear programNetwork so the URL-chain sync
       // effect never fires again and the user's manual dropdown choice persists.
-      window.location.hash = p === 'landing' ? '/' : p;
+      // Use pushState to go back to the root path + hash so that /p/... paths
+      // don't end up as /p/v5-testnet/3#v4-explore (appending the hash to the
+      // existing deep path instead of navigating away from it).
+      const hash = p === 'landing' ? '/' : p;
+      window.history.pushState({}, '', '/#' + hash);
+      // Dispatch a hashchange so the popstate listener in the effect picks it up
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
       setRoute({ page: p, programId: id, programNetwork: undefined });
     }
   };

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ConnectKitButton } from 'connectkit';
 import {
   Compass, PlusCircle, FileText, BookOpen,
-  Sun, Moon, Menu, ChevronRight, Github,
+  Sun, Moon, Menu, ChevronRight,
   ExternalLink, Code2, Scale, GitCompare,
   Cpu, List, PanelLeftClose, PanelLeftOpen,
   MoreHorizontal, HelpCircle, LayoutList,
@@ -279,46 +279,67 @@ function Sidebar({
           })}
         </nav>
 
-        {/* Sidebar bottom: contract link + GitHub only */}
+        {/* Sidebar bottom: contract links (no GitHub — source code link is in page footer) */}
         <div
           className="px-4 py-4 border-t flex-shrink-0"
           style={{ borderColor: 'var(--sidebar-border)' }}
         >
-          <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5 opacity-50" style={{ color: 'var(--sidebar-fg)' }}>
-            Contract V4
-          </p>
-          <a
-            href={`${EXPLORER}/address/${GRANTFLOW_V4_ADDRESS}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80 mb-1"
-            style={{ color: 'var(--sidebar-accent)' }}
-            aria-label={`View V4 contract ${GRANTFLOW_V4_ADDRESS} on explorer`}
-          >
-            <ExternalLink size={10} aria-hidden />
-            {short(GRANTFLOW_V4_ADDRESS)}
-          </a>
+          {config.v5Address ? (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5 opacity-50" style={{ color: 'var(--sidebar-fg)' }}>
+                Contract V5
+              </p>
+              <a
+                href={`${EXPLORER}/address/${config.v5Address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80 mb-1"
+                style={{ color: 'var(--sidebar-accent)' }}
+                aria-label={`View V5 contract ${config.v5Address} on explorer`}
+              >
+                <ExternalLink size={10} aria-hidden />
+                {short(config.v5Address)}
+              </a>
+              <a
+                href={`${EXPLORER}/address/${GRANTFLOW_V4_ADDRESS}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 font-mono text-[10px] transition-colors hover:opacity-70 mb-1 opacity-50"
+                style={{ color: 'var(--sidebar-fg)' }}
+                aria-label={`View legacy V4 contract ${GRANTFLOW_V4_ADDRESS} on explorer`}
+              >
+                <ExternalLink size={9} aria-hidden />
+                Legacy v4 · {short(GRANTFLOW_V4_ADDRESS)}
+              </a>
+            </>
+          ) : (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5 opacity-50" style={{ color: 'var(--sidebar-fg)' }}>
+                Contract V4
+              </p>
+              <a
+                href={`${EXPLORER}/address/${GRANTFLOW_V4_ADDRESS}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80 mb-1"
+                style={{ color: 'var(--sidebar-accent)' }}
+                aria-label={`View V4 contract ${GRANTFLOW_V4_ADDRESS} on explorer`}
+              >
+                <ExternalLink size={10} aria-hidden />
+                {short(GRANTFLOW_V4_ADDRESS)}
+              </a>
+            </>
+          )}
           <a
             href={`${EXPLORER}/address/${GRANTFLOW_ADDRESS}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 font-mono text-[10px] transition-colors hover:opacity-70 mb-3 opacity-50"
+            className="flex items-center gap-1.5 font-mono text-[10px] transition-colors hover:opacity-70 opacity-50"
             style={{ color: 'var(--sidebar-fg)' }}
             aria-label={`View legacy V3 contract ${GRANTFLOW_ADDRESS} on explorer`}
           >
             <ExternalLink size={9} aria-hidden />
             Legacy v3 · {short(GRANTFLOW_ADDRESS)}
-          </a>
-          <a
-            href="https://github.com/khanhnttu/grantflow"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-[11px] transition-colors hover:opacity-80"
-            style={{ color: 'var(--sidebar-fg)', opacity: 0.6 }}
-            aria-label="GitHub repository"
-          >
-            <Github size={12} aria-hidden />
-            GitHub
           </a>
         </div>
       </aside>
@@ -430,22 +451,6 @@ function TopBar({
 
         {/* Guide / More dropdown */}
         <MoreMenu page={page} onNav={onNav} />
-
-        {/* GitHub */}
-        <a
-          href="https://github.com/khanhnttu/grantflow"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden sm:flex items-center justify-center rounded-lg p-1.5 transition-colors hover:opacity-80 focus-visible:outline-2 flex-shrink-0"
-          style={{
-            background: 'var(--surface-muted)',
-            border: '1px solid var(--border)',
-            color: 'var(--muted)',
-          }}
-          aria-label="GitHub repository"
-        >
-          <Github size={15} aria-hidden />
-        </a>
 
         {/* Language switcher */}
         <LangSwitcher />

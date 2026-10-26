@@ -13,6 +13,10 @@ export function AppSlimFooter() {
   const { t } = useI18n();
   const { config } = useNetworkStore();
 
+  // Show V5 address when available, fall back to V4
+  const primaryAddr    = config.v5Address || config.v4Address;
+  const primaryLabel   = config.v5Address ? 'V5' : 'V4';
+
   return (
     <footer
       className="mt-8 pt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]"
@@ -26,17 +30,21 @@ export function AppSlimFooter() {
       </span>
       <span aria-hidden>·</span>
       <a
-        href={`${config.explorerBase}/address/${config.v4Address}`}
+        href={`${config.explorerBase}/address/${primaryAddr}`}
         target="_blank" rel="noopener noreferrer"
         className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity font-mono"
-        aria-label={`${t('slimFooter.contract')} ${config.v4Address}`}
+        aria-label={`${t('slimFooter.contract')} ${primaryAddr}`}
       >
-        V4 {short(config.v4Address)} <ExternalLink size={9} aria-hidden />
+        {primaryLabel} {short(primaryAddr)} <ExternalLink size={9} aria-hidden />
       </a>
       <span aria-hidden>·</span>
-      <a href="https://github.com/khanhnttu/grantflow" target="_blank" rel="noopener noreferrer"
-        className="hover:opacity-80 transition-opacity">
-        {t('slimFooter.github')}
+      {/* Source code link — transparency for a USDC-holding app */}
+      <a
+        href="https://github.com/khanhnttu/grantflow"
+        target="_blank" rel="noopener noreferrer"
+        className="hover:opacity-80 transition-opacity"
+      >
+        Source code
       </a>
     </footer>
   );
