@@ -376,14 +376,17 @@ async function main(): Promise<void> {
   writeRobots();
 
   // Generate OG images (PNG via sharp, SVG fallback)
-  await writeOgImages(all.map(p => ({
-    id: p.id,
-    chain: p.chain,
-    name: p.name,
-    pool: p.pool,
-    sponsorName: p.sponsorName,
-    subDeadline: p.subDeadline,
-  })));
+  await writeOgImages(
+    all.map(p => ({
+      id:       p.id,
+      chain:    p.chain,
+      name:     p.name,
+      poolUsdc: p.pool,
+      sponsor:  p.sponsorName ?? null,
+      deadline: p.subDeadline,
+    })),
+    DIST,
+  );
 
   // Update homepage meta in dist/index.html
   writeHomepageMeta(indexTemplate);
