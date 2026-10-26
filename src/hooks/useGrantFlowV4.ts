@@ -91,7 +91,7 @@ export function useProgramV4(programId: number | undefined) {
         address: v4, abi: GRANTFLOW_V4_ABI,
         functionName: 'getProgram', args: [BigInt(programId)],
       });
-      setData(r as V4ProgramTuple);
+      setData(r);
     } catch (e) { setError(e instanceof Error ? e : new Error(String(e))); }
     finally { setLoad(false); }
   }, [appClient, v4, programId]);
@@ -102,7 +102,7 @@ export function useProgramV4(programId: number | undefined) {
     appClient.readContract({
       address: v4, abi: GRANTFLOW_V4_ABI,
       functionName: 'getProgram', args: [BigInt(programId)],
-    }).then(r => { if (!cancelled) { setData(r as V4ProgramTuple); setLoad(false); } })
+    }).then(r => { if (!cancelled) { setData(r); setLoad(false); } })
       .catch(e => { if (!cancelled) { setError(e instanceof Error ? e : new Error(String(e))); setLoad(false); } });
     return () => { cancelled = true; };
   }, [appClient, v4, programId]);
@@ -122,7 +122,7 @@ export function useProgramJudges(programId: number | undefined) {
         address: v4, abi: GRANTFLOW_V4_ABI,
         functionName: 'getJudges', args: [BigInt(programId)],
       });
-      setData(r as `0x${string}`[]);
+      setData(r);
     } catch { /* ignore */ }
   }, [appClient, v4, programId]);
 
@@ -132,7 +132,7 @@ export function useProgramJudges(programId: number | undefined) {
     appClient.readContract({
       address: v4, abi: GRANTFLOW_V4_ABI,
       functionName: 'getJudges', args: [BigInt(programId)],
-    }).then(r => { if (!cancelled) setData(r as `0x${string}`[]); })
+    }).then(r => { if (!cancelled) setData(r); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [appClient, v4, programId]);
@@ -182,7 +182,7 @@ export function useSubmissionV4(programId: number | undefined, submissionId: num
         address: v4, abi: GRANTFLOW_V4_ABI,
         functionName: 'getSubmission', args: [BigInt(programId), BigInt(submissionId)],
       });
-      setData(r as V4SubTuple);
+      setData(r);
     } catch { /* ignore */ }
   }, [appClient, v4, programId, submissionId]);
 
@@ -192,7 +192,7 @@ export function useSubmissionV4(programId: number | undefined, submissionId: num
     appClient.readContract({
       address: v4, abi: GRANTFLOW_V4_ABI,
       functionName: 'getSubmission', args: [BigInt(programId), BigInt(submissionId)],
-    }).then(r => { if (!cancelled) setData(r as V4SubTuple); })
+    }).then(r => { if (!cancelled) setData(r); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [appClient, v4, programId, submissionId]);
@@ -476,7 +476,7 @@ export function useAllSubmissionsV4(programId: number | undefined, count: number
           appClient.readContract({
             address: v4, abi: GRANTFLOW_V4_ABI,
             functionName: 'getSubmission', args: [BigInt(programId), BigInt(i)],
-          }).then(r => ({ result: r as V4SubTuple, status: 'success' as const }))
+          }).then(r => ({ result: r, status: 'success' as const }))
             .catch(() => ({ result: undefined, status: 'failure' as const }))
         )
       );
@@ -494,8 +494,8 @@ export function useAllSubmissionsV4(programId: number | undefined, count: number
         : Array.from({ length: count }, (_, i) =>
             appClient.readContract({
               address: v4, abi: GRANTFLOW_V4_ABI,
-              functionName: 'getSubmission', args: [BigInt(programId!), BigInt(i)],
-            }).then(r => ({ result: r as V4SubTuple, status: 'success' as const }))
+              functionName: 'getSubmission', args: [BigInt(programId), BigInt(i)],
+            }).then(r => ({ result: r, status: 'success' as const }))
               .catch(() => ({ result: undefined, status: 'failure' as const }))
           )
     ).then(results => {

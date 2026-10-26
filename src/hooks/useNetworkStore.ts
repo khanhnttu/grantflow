@@ -43,7 +43,8 @@ export interface NetworkConfig {
   v3Address: `0x${string}`;  // GrantFlow v3 — legacy
 }
 
-const MAINNET_V5 = (import.meta.env.VITE_GRANTFLOW_V5_ADDRESS_MAINNET || '') as `0x${string}`;
+const MAINNET_V5 = (import.meta.env.VITE_GRANTFLOW_V5_ADDRESS_MAINNET ||
+  '0xe67ec49a6618cc205fab934fc76f8a271cc77c37') as `0x${string}`;
 const MAINNET_V4 = (import.meta.env.VITE_GRANTFLOW_V4_ADDRESS_MAINNET ||
   '0x41ffdab65fca60bda9beb455285d29ab753c3d2e') as `0x${string}`;
 const MAINNET_V3 = (import.meta.env.VITE_GRANTFLOW_ADDRESS_MAINNET ||
