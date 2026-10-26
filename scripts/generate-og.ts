@@ -107,12 +107,37 @@ export function buildOgSvg(data: OgData): string {
 </svg>`;
 }
 
-export function writeOgImages(programs: OgData[]): void {
+export async function writeOgImages(programs: OgData[]): Promise<void> {
   mkdirSync(OG_DIR, { recursive: true });
+
+  // Try to load sharp for SVG→PNG conversion
+  let sharpFn: ((buf: Buffer) => Promise<Buffer>) | null = null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sharp = require('sharp') as (input: Buffer) => {
+      png: () => { toBuffer: () => Promise<Buffer> };
+    };
+    sharpFn = (buf) => sharp(buf).png().toBuffer();
+    console.log('[og] sharp loaded — writing PNG');
+  } catch {
+    console.warn('[og] sharp unavailable — writing SVG only');
+  }
 
   for (const p of programs) {
     const svg = buildOgSvg(p);
     const filename = `${p.chain}-${p.id}`;
+
+    if (sharpFn) {
+      try {
+        const png = await sharpFn(Buffer.from(svg));
+        writeFileSync(join(OG_DIR, `${filename}.png`), png);
+        console.log(`[og] Wrote og/${filename}.png`);
+        continue;
+      } catch (e) {
+        console.warn(`[og] sharp failed for ${filename}, falling back to SVG:`, (e as Error).message);
+      }
+    }
+    // SVG fallback
     writeFileSync(join(OG_DIR, `${filename}.svg`), svg, 'utf8');
     console.log(`[og] Wrote og/${filename}.svg`);
   }

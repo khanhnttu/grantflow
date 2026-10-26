@@ -206,7 +206,7 @@ function writeProgramPage(indexTemplate: string, prog: ProgramMeta): string {
     ? ` · deadline ${new Date(prog.subDeadline * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
     : '';
   const description = `${prog.pool} USDC prize pool${sponsor}${deadline}. ${prog.desc.slice(0, 120)}`;
-  const ogImage = `${CANONICAL_BASE}/og/${prog.chain}-${prog.id}.svg`;
+  const ogImage = `${CANONICAL_BASE}/og/${prog.chain}-${prog.id}.png`;
 
   const jsonLd = JSON.stringify({
     '@context': 'https://schema.org',
@@ -320,6 +320,13 @@ function writeVercelConfig(_programs: ProgramMeta[]): void {
   const config = {
     headers: [
       {
+        source: '/og/(.*)\\.png',
+        headers: [
+          { key: 'Cache-Control',  value: 's-maxage=300, stale-while-revalidate=600' },
+          { key: 'Content-Type',   value: 'image/png' },
+        ],
+      },
+      {
         source: '/og/(.*)',
         headers: [{ key: 'Cache-Control', value: 's-maxage=300, stale-while-revalidate=600' }],
       },
@@ -327,6 +334,10 @@ function writeVercelConfig(_programs: ProgramMeta[]): void {
         source: '/sitemap.xml',
         headers: [{ key: 'Cache-Control', value: 's-maxage=3600' }],
       },
+    ],
+    redirects: [
+      { source: '/p/v5-mainnet/:id', destination: '/programs/program-:id', statusCode: 308 },
+      { source: '/p/v5-testnet/:id', destination: '/testnet/programs/program-:id', statusCode: 308 },
     ],
     rewrites: [{ source: '/(.*)', destination: '/index.html' }],
   };
@@ -364,8 +375,8 @@ async function main(): Promise<void> {
   // Write robots.txt
   writeRobots();
 
-  // Generate OG images (SVG, one per program)
-  writeOgImages(all.map(p => ({
+  // Generate OG images (PNG via sharp, SVG fallback)
+  await writeOgImages(all.map(p => ({
     id: p.id,
     chain: p.chain,
     name: p.name,
@@ -377,7 +388,8 @@ async function main(): Promise<void> {
   // Update homepage meta in dist/index.html
   writeHomepageMeta(indexTemplate);
 
-  // vercel.json is now at project root (with serverless function routes); skip dist/ update
+  // Write dist/vercel.json with headers, 301 redirects, and SPA rewrite
+  writeVercelConfig(all);
 
   console.log(`[prerender] Done. ${all.length} program pages, sitemap, robots.txt, OG images.`);
 }
