@@ -7,6 +7,8 @@
 'use strict';
 const fs     = require('fs');
 const path   = require('path');
+// NODE_PATH is set by generate-og.ts to point to the project root node_modules,
+// so plain require() finds packages regardless of bun vs npm install layout.
 const satori = require('satori');
 const sharp  = require('sharp');
 

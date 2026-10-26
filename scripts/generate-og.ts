@@ -29,10 +29,14 @@ export async function writeOgImages(programs: OgProgram[], distDir: string): Pro
 
   const runnerPath = path.join(__dirname, 'og-runner.cjs');
 
+  // Pass NODE_PATH so `node` can find CJS modules regardless of package manager layout
+  // (bun uses a hardlink store — node_modules/ symlinks may not be direct folders).
+  const nodePath = path.join(PROJECT_ROOT, 'node_modules');
   await new Promise<void>((resolve, reject) => {
     const child = cp.spawn('node', [runnerPath, inputFile], {
       stdio: 'inherit',
       cwd: PROJECT_ROOT,
+      env: { ...process.env, NODE_PATH: nodePath },
     });
     child.on('exit', code => {
       try { fs.unlinkSync(inputFile); } catch { /* ignore */ }
