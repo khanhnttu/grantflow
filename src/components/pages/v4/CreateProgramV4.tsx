@@ -4,7 +4,7 @@
  * Falls back to GrantFlowV4 when v5Address is empty.
  * Steps: 1. Basics (+ sponsor meta) → 2. Prizes → 3. Judges → 4. Review & Pay
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useI18n } from '@/hooks/useI18n';
 import { PlusCircle, Trash2, ChevronRight, ChevronLeft, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useAccount } from 'wagmi';
@@ -129,14 +129,21 @@ export function CreateProgramV4({ onDone }: Props) {
     }
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Pure computed validity — never calls setState, safe to use in disabled props
+  const sponsorUrlsValid = useMemo(() =>
+    (!website || isValidUrl(website)) && (!logo || isValidUrl(logo)),
+    [website, logo],
+  );
+
   const step1Valid = !!name && !!subDeadline && !!judgeDeadline &&
     new Date(subDeadline).getTime() > 0 &&
     new Date(judgeDeadline).getTime() > new Date(subDeadline).getTime() &&
-    !websiteErr && !logoErr;
+    sponsorUrlsValid;
   const step2Valid = prizesRaw.every(p => p > 0n) && prizesRaw.length > 0;
   const step3Valid = judges.length > 0;
 
-  const validateSponsorUrls = () => {
+  // Called only from event handlers (onClick) — allowed to set state
+  const validateAndShowSponsorUrlErrors = () => {
     let ok = true;
     if (website && !isValidUrl(website)) { setWebsiteErr('Must be https://…'); ok = false; }
     else setWebsiteErr('');
@@ -559,11 +566,11 @@ export function CreateProgramV4({ onDone }: Props) {
           {step < 4 && (
             <button
               disabled={
-                (step === 1 && (!step1Valid || !validateSponsorUrls())) ||
+                (step === 1 && !step1Valid) ||
                 (step === 2 && !step2Valid) ||
                 (step === 3 && !step3Valid)
               }
-              onClick={() => { if (step === 1 && !validateSponsorUrls()) return; setStep((step + 1) as Step); }}
+              onClick={() => { if (step === 1 && !validateAndShowSponsorUrlErrors()) return; setStep((step + 1) as Step); }}
               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50"
               style={{ background: 'var(--accent)', color: '#fff' }}>
               Next <ChevronRight size={14} />
