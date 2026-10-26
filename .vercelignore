@@ -1,0 +1,11 @@
+node_modules
+.git
+grantflow
+contracts/out
+contracts/cache
+contracts/lib
+console.jsonl
+traces.jsonl
+.agents
+.env
+.env.*

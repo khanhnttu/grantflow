@@ -126,13 +126,16 @@ function buildHtml(
   <meta name="twitter:image"       content="${escapeHtml(ogImage)}" />
   <script type="application/ld+json">${jsonLd}</script>`;
 
-  // Inject right after the existing <title> tag (replace it) or before </head>
-  if (indexTemplate.includes('</head>')) {
-    // Remove any existing <title> tag from the template
-    const withoutTitle = indexTemplate.replace(/<title>[^<]*<\/title>/, '');
-    return withoutTitle.replace('</head>', metaBlock + '\n  </head>');
-  }
-  return indexTemplate;
+  if (!indexTemplate.includes('</head>')) return indexTemplate;
+  // Strip all default meta before injecting program-specific meta
+  let stripped = indexTemplate
+    .replace(/<title>[^<]*<\/title>/gi, '')
+    .replace(/<meta\s+name="description"[^>]*>/gi, '')
+    .replace(/<meta\s+property="og:[^"]*"[^>]*>/gi, '')
+    .replace(/<meta\s+name="twitter:[^"]*"[^>]*>/gi, '')
+    .replace(/<link\s+rel="canonical"[^>]*>/gi, '')
+    .replace(/<script\s+type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>/gi, '');
+  return stripped.replace('</head>', metaBlock + '\n  </head>');
 }
 
 // ── Fetch programs ────────────────────────────────────────────────────────────
@@ -374,8 +377,7 @@ async function main(): Promise<void> {
   // Update homepage meta in dist/index.html
   writeHomepageMeta(indexTemplate);
 
-  // Update vercel.json to add /api/og redirect to static SVG files
-  writeVercelConfig(all);
+  // vercel.json is now at project root (with serverless function routes); skip dist/ update
 
   console.log(`[prerender] Done. ${all.length} program pages, sitemap, robots.txt, OG images.`);
 }

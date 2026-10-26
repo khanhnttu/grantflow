@@ -1,3 +1,32 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "outputDirectory": "dist",
+  "buildCommand": "bun run build",
+  "installCommand": "bun install",
+  "framework": null,
+  "functions": {
+    "api/program-page.ts": { "memory": 256, "maxDuration": 15 },
+    "api/og.ts":           { "memory": 256, "maxDuration": 15 },
+    "api/sitemap.ts":      { "memory": 256, "maxDuration": 15 }
+  },
+  "headers": [
+    {
+      "source": "/og/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=300, stale-while-revalidate=600" }]
+    }
+  ],
+  "redirects": [
+    { "source": "/p/v5-mainnet/:id", "destination": "/programs/program-:id", "permanent": true },
+    { "source": "/p/v5-testnet/:id", "destination": "/testnet/programs/program-:id", "permanent": true },
+    { "source": "/p/v4-mainnet/:id", "destination": "/programs/v4/program-:id", "permanent": true },
+    { "source": "/p/v4-testnet/:id", "destination": "/testnet/programs/v4/program-:id", "permanent": true }
+  ],
+  "routes": [
+    { "src": "/sitemap.xml",                        "dest": "/api/sitemap"       },
+    { "src": "/api/og",                              "dest": "/api/og"            },
+    { "src": "/programs/(.*)",                       "dest": "/api/program-page"  },
+    { "src": "/testnet/programs/(.*)",               "dest": "/api/program-page"  },
+    { "src": "^/assets/(.*)",                        "dest": "/assets/$1"         },
+    { "src": "^/og/(.*)",                            "dest": "/og/$1"             },
+    { "src": "/(.*)",                                "dest": "/index.html"        }
+  ]
 }
