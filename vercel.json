@@ -4,9 +4,17 @@
   "installCommand": "bun install",
   "framework": null,
   "functions": {
-    "api/program-page.ts": { "memory": 256, "maxDuration": 15 },
-    "api/og.ts":           { "memory": 256, "maxDuration": 15 },
-    "api/sitemap.ts":      { "memory": 256, "maxDuration": 15 }
+    "api/program-page.ts": {
+      "memory": 256,
+      "maxDuration": 15,
+      "includeFiles": "dist/index.html"
+    },
+    "api/og.ts": {
+      "memory": 512,
+      "maxDuration": 15,
+      "includeFiles": "node_modules/@fontsource/inter/files/inter-latin-400-normal.woff,node_modules/@fontsource/inter/files/inter-latin-700-normal.woff"
+    },
+    "api/sitemap.ts": { "memory": 256, "maxDuration": 15 }
   },
   "headers": [
     {
@@ -24,9 +32,9 @@
     { "source": "/p/v4-testnet/:id", "destination": "/testnet/programs/v4/program-:id","permanent": true }
   ],
   "rewrites": [
-    { "source": "/sitemap.xml",                  "destination": "/api/sitemap"      },
-    { "source": "/programs/:path*",              "destination": "/api/program-page" },
-    { "source": "/testnet/programs/:path*",      "destination": "/api/program-page" },
+    { "source": "/sitemap.xml",             "destination": "/api/sitemap"      },
+    { "source": "/programs/:path*",         "destination": "/api/program-page" },
+    { "source": "/testnet/programs/:path*", "destination": "/api/program-page" },
     {
       "source": "/((?!assets/|og/|api/|_next/|robots\\.txt|favicon\\.ico).*)",
       "destination": "/index.html"
