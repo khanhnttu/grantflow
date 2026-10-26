@@ -128,15 +128,17 @@ function useLiveStats(): LiveStats {
   const [paidOut, setPaidOut] = useState<bigint | null>(null);
 
   // Batch: v4 programCount + v3 programCount + USDC balance of v4 contract
+  // chainId pinned on each entry so the wallet chain is ignored.
   const { data } = useReadContracts({
     contracts: [
-      { address: v4Addr, abi: GRANTFLOW_V4_ABI, functionName: 'programCount' as const },
-      { address: GRANTFLOW_ADDRESS, abi: GRANTFLOW_ABI, functionName: 'programCount' as const },
+      { address: v4Addr, abi: GRANTFLOW_V4_ABI, functionName: 'programCount' as const, chainId: ACTIVE_CHAIN_ID },
+      { address: GRANTFLOW_ADDRESS, abi: GRANTFLOW_ABI, functionName: 'programCount' as const, chainId: ACTIVE_CHAIN_ID },
       {
         address: '0x3600000000000000000000000000000000000000',
         abi: [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }] as const,
         functionName: 'balanceOf',
         args: [v4Addr],
+        chainId: ACTIVE_CHAIN_ID,
       },
     ],
   });
