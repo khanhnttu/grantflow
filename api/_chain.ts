@@ -2,7 +2,7 @@
 // Runs on Node.js — can use full viem.
 // arc-studio-allow-onchain-literal
 
-import { createPublicClient, http, parseAbiItem } from 'viem';
+import { createPublicClient, http } from 'viem';
 
 // Arc published RPC endpoints — no rate limit documented; used server-side with s-maxage caching.
 // arc-studio-allow-onchain-literal
@@ -53,13 +53,56 @@ function getConfig(chain: Chain) {
   };
 }
 
-const GET_PROGRAM_ABI = parseAbiItem(
-  'function getProgram(uint256 programId) view returns (string name, string description, address sponsor, uint256 prizePool, uint256 submissionDeadline, uint256 judgingDeadline, bool finalized, bool cancelled)'
-);
+// GrantFlowV5.getProgram — exact tuple order from GrantFlowV5.sol
+// returns (name, description, sponsor, prizes[], totalDeposited,
+//          submissionDeadline, judgingDeadline, programType, category,
+//          exists, finalized, cancelled)
+const V5_GET_PROGRAM_ABI = [{
+  type: 'function',
+  name: 'getProgram',
+  stateMutability: 'view',
+  inputs: [{ name: 'programId', type: 'uint256' }],
+  outputs: [
+    { name: 'name',               type: 'string'    },
+    { name: 'description',        type: 'string'    },
+    { name: 'sponsor',            type: 'address'   },
+    { name: 'prizes',             type: 'uint256[]' },
+    { name: 'totalDeposited',     type: 'uint256'   },
+    { name: 'submissionDeadline', type: 'uint256'   },
+    { name: 'judgingDeadline',    type: 'uint256'   },
+    { name: 'programType',        type: 'uint8'     },
+    { name: 'category',           type: 'uint8'     },
+    { name: 'exists',             type: 'bool'      },
+    { name: 'finalized',          type: 'bool'      },
+    { name: 'cancelled',          type: 'bool'      },
+  ],
+}] as const;
 
-const GET_PROGRAM_COUNT_ABI = parseAbiItem(
-  'function programCount() view returns (uint256)'
-);
+// GrantFlowV4.getProgram (legacy) — original flat tuple
+const V4_GET_PROGRAM_ABI = [{
+  type: 'function',
+  name: 'getProgram',
+  stateMutability: 'view',
+  inputs: [{ name: 'programId', type: 'uint256' }],
+  outputs: [
+    { name: 'name',               type: 'string'  },
+    { name: 'description',        type: 'string'  },
+    { name: 'sponsor',            type: 'address' },
+    { name: 'prizePool',          type: 'uint256' },
+    { name: 'submissionDeadline', type: 'uint256' },
+    { name: 'judgingDeadline',    type: 'uint256' },
+    { name: 'finalized',          type: 'bool'    },
+    { name: 'cancelled',          type: 'bool'    },
+  ],
+}] as const;
+
+const PROGRAM_COUNT_ABI = [{
+  type: 'function',
+  name: 'programCount',
+  stateMutability: 'view',
+  inputs: [],
+  outputs: [{ name: '', type: 'uint256' }],
+}] as const;
 
 export interface ProgramInfo {
   id: number;
@@ -117,33 +160,66 @@ export async function fetchProgram(chain: Chain, id: number, version: 'v5' | 'v4
   const client = makeClient(chain);
 
   try {
-    const result = await client.readContract({
-      address,
-      abi: [GET_PROGRAM_ABI],
-      functionName: 'getProgram',
-      args: [BigInt(id)],
-    }) as readonly [string, string, string, bigint, bigint, bigint, boolean, boolean];
+    if (version === 'v5') {
+      const result = await client.readContract({
+        address,
+        abi: V5_GET_PROGRAM_ABI,
+        functionName: 'getProgram',
+        args: [BigInt(id)],
+      });
+      // result is typed as a readonly tuple by viem's const ABI inference
+      const { name, description, sponsor, prizes, totalDeposited, submissionDeadline, judgingDeadline, exists, finalized, cancelled } = result;
+      console.log(`[chain] v5 raw: exists=${exists} name="${name}" prizes=${JSON.stringify(prizes?.map(String))} totalDeposited=${totalDeposited}`);
+      if (!exists) return null;
 
-    const [name, description, sponsor, prizePool, subDeadline, judgeDeadline, finalized, cancelled] = result;
-    if (!name) return null;
-
-    const { sponsorName, sponsorWebsite, desc } = parseSponsorMeta(description);
-
-    return {
-      id, chain, version,
-      name,
-      description: desc || description,
-      sponsor,
-      pool: formatUsdc(prizePool),
-      poolRaw: prizePool.toString(),
-      subDeadline: Number(subDeadline),
-      judgeDeadline: Number(judgeDeadline),
-      finalized,
-      cancelled,
-      sponsorName,
-      sponsorWebsite,
-    };
-  } catch {
+      // Prize pool: totalDeposited if > 0, else sum of prizes[]
+      const pool = totalDeposited > 0n
+        ? totalDeposited
+        : (prizes ?? []).reduce((acc: bigint, p: bigint) => acc + p, 0n);
+      const { sponsorName, sponsorWebsite, desc } = parseSponsorMeta(description);
+      return {
+        id, chain, version,
+        name,
+        description: desc || description,
+        sponsor,
+        pool: formatUsdc(pool),
+        poolRaw: pool.toString(),
+        subDeadline: Number(submissionDeadline),
+        judgeDeadline: Number(judgingDeadline),
+        finalized,
+        cancelled,
+        sponsorName,
+        sponsorWebsite,
+      };
+    } else {
+      // V4
+      const result = await client.readContract({
+        address,
+        abi: V4_GET_PROGRAM_ABI,
+        functionName: 'getProgram',
+        args: [BigInt(id)],
+      });
+      const { name, description, sponsor, prizePool, submissionDeadline, judgingDeadline, finalized, cancelled } = result;
+      console.log(`[chain] v4 raw: name="${name}" pool=${prizePool}`);
+      if (!name) return null;
+      const { sponsorName, sponsorWebsite, desc } = parseSponsorMeta(description);
+      return {
+        id, chain, version,
+        name,
+        description: desc || description,
+        sponsor,
+        pool: formatUsdc(prizePool),
+        poolRaw: prizePool.toString(),
+        subDeadline: Number(submissionDeadline),
+        judgeDeadline: Number(judgingDeadline),
+        finalized,
+        cancelled,
+        sponsorName,
+        sponsorWebsite,
+      };
+    }
+  } catch (err) {
+    console.error(`[chain] fetchProgram error chain=${chain} id=${id} version=${version}:`, err);
     return null;
   }
 }
@@ -155,9 +231,9 @@ export async function fetchProgramCount(chain: Chain, version: 'v5' | 'v4' = 'v5
   try {
     const count = await client.readContract({
       address,
-      abi: [GET_PROGRAM_COUNT_ABI],
+      abi: PROGRAM_COUNT_ABI,
       functionName: 'programCount',
-    }) as bigint;
+    });
     return Number(count);
   } catch {
     return 0;
@@ -175,18 +251,18 @@ export function slugify(str: string): string {
 
 /** Extract chain, id, and version from URL path patterns. */
 export function parseUrlPath(pathname: string): { chain: Chain; id: number; version: 'v5' | 'v4' } | null {
-  // /programs/v4/<slug>-<id> or /programs/v4/<id>
-  const v4 = pathname.match(/^\/programs\/v4\/(?:.+-)?(\d+)\/?$/);
-  if (v4) return { chain: 'mainnet', id: parseInt(v4[1], 10), version: 'v4' };
-  // /programs/<slug>-<id> mainnet v5
-  const mainnet = pathname.match(/^\/programs\/(?:.+-)?(\d+)\/?$/);
-  if (mainnet) return { chain: 'mainnet', id: parseInt(mainnet[1], 10), version: 'v5' };
+  // /programs/v4/<slug>-<id>
+  const v4m = pathname.match(/^\/programs\/v4\/(?:.+-)?(\d+)\/?$/);
+  if (v4m) return { chain: 'mainnet', id: parseInt(v4m[1], 10), version: 'v4' };
+  // /programs/<slug>-<id>  mainnet v5
+  const mn = pathname.match(/^\/programs\/(?:.+-)?(\d+)\/?$/);
+  if (mn) return { chain: 'mainnet', id: parseInt(mn[1], 10), version: 'v5' };
   // /testnet/programs/v4/<slug>-<id>
   const v4t = pathname.match(/^\/testnet\/programs\/v4\/(?:.+-)?(\d+)\/?$/);
   if (v4t) return { chain: 'testnet', id: parseInt(v4t[1], 10), version: 'v4' };
   // /testnet/programs/<slug>-<id>
-  const testnet = pathname.match(/^\/testnet\/programs\/(?:.+-)?(\d+)\/?$/);
-  if (testnet) return { chain: 'testnet', id: parseInt(testnet[1], 10), version: 'v5' };
+  const tn = pathname.match(/^\/testnet\/programs\/(?:.+-)?(\d+)\/?$/);
+  if (tn) return { chain: 'testnet', id: parseInt(tn[1], 10), version: 'v5' };
   return null;
 }
 
