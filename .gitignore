@@ -47,8 +47,9 @@ traces.jsonl
 console.jsonl
 
 # Nested repo clone (leftover from import)
-grantflow/
-lib/
+/grantflow/
+# Foundry lib/ only (root-level); src/lib/ must NOT be excluded
+/lib/
 
 # Circle recovery files — contain sensitive key material
 .circle/
