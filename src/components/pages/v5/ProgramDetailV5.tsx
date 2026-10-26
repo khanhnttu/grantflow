@@ -25,7 +25,7 @@ import { ResultsTab } from '@/components/pages/v5/ResultsTab';
 import { EditProgramModal } from '@/components/pages/v5/EditProgramModal';
 import {
   useV5Write, useV5ProgramForChain, useV5SubmissionsForChain,
-  buildProgramUrl, GRANTFLOW_V5_ABI,
+  buildProgramUrl, slugify, GRANTFLOW_V5_ABI,
 } from '@/hooks/useGrantFlowV5';
 import {
   computePhase, countdownLabel, totalPool,
@@ -61,10 +61,12 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
   );
 
   const explorer = readCfg.explorerBase;
-  const shareUrl = buildProgramUrl(readChain, programId, 'v5');
 
   // ── Data (always from readCfg, never from wallet chain) ──────────────────────
   const { prog, loading, refetch: refetchProg } = useV5ProgramForChain(programId, readCfg, readClient);
+
+  // Share URL — includes slug once program name loads (replaceState updates URL in useEffect below)
+  const shareUrl = buildProgramUrl(readChain, programId, 'v5', prog?.name ?? '');
   const [subCount, setSubCount] = useState(0);
   const { subs, refetch: refetchSubs } = useV5SubmissionsForChain(programId, subCount, readCfg, readClient);
   const [judges, setJudges] = useState<string[]>([]);
@@ -89,6 +91,16 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
   const [memberShares, setMemberShares] = useState<string[]>(['']); // in % (e.g. "30")
   const [leaderShare, setLeaderShare]   = useState('100'); // leader % (auto-calculated)
   const [sharesErr, setSharesErr]       = useState('');
+
+  // Rewrite URL to canonical slug form once program name loads
+  useEffect(() => {
+    if (!prog?.name) return;
+    const canonicalUrl = buildProgramUrl(readChain, programId, 'v5', prog.name);
+    const canonicalPath = new URL(canonicalUrl, window.location.origin).pathname;
+    if (window.location.pathname !== canonicalPath) {
+      window.history.replaceState({}, '', canonicalPath);
+    }
+  }, [prog?.name, readChain, programId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Active tab ────────────────────────────────────────────────────────────────
   const [tab, setTab] = useState<TabId>('details');

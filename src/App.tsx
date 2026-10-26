@@ -27,7 +27,7 @@ import { ComparePage } from '@/components/pages/ComparePage';
 import { DevelopersPage } from '@/components/pages/DevelopersPage';
 import { BuiltVsPlannedPage } from '@/components/pages/BuiltVsPlannedPage';
 
-import { parseProgramPath } from '@/hooks/useGrantFlowV5';
+import { parseProgramPath, buildProgramUrl, slugify } from '@/hooks/useGrantFlowV5';
 
 // ── Marketing pages: full-width without sidebar, big footer ──────────────────
 // These render outside the app shell, with a full-width layout.
@@ -78,9 +78,18 @@ const BARE_PATH_PAGES: Record<string, AppPage> = {
 function parseRoute(): RouteState {
   const path = window.location.pathname;
 
-  // 1. Clean path program routes: /p/v5-testnet/3
+  // 1. All program path routes (new canonical + old /p/ for redirect)
   const pathResult = parseProgramPath(path);
   if (pathResult) {
+    const isOldPath = path.startsWith('/p/');
+    if (isOldPath) {
+      // Redirect old /p/v5-mainnet/0 → /programs/grantflow-mainnet-launch-test-0
+      // We don't have the name at parse time, so redirect to the numeric canonical
+      // and let ProgramDetailV5 replaceState with the slug once it loads the name.
+      const canonical = buildProgramUrl(pathResult.chain, pathResult.programId, pathResult.version);
+      const canonicalPath = new URL(canonical).pathname;
+      window.history.replaceState({}, '', canonicalPath);
+    }
     return {
       page:           pathResult.version === 'v5' ? 'v5-program' : 'v4-program',
       programId:      pathResult.programId,
@@ -185,8 +194,9 @@ function AppInner() {
     } else if (p === 'v5-program' && id !== undefined) {
       // Use clean path URL for V5 programs — encode the currently active chain
       const chain = config.name;
-      const path = `/p/v5-${chain}/${id}`;
-      window.history.pushState({}, '', path);
+      const url = buildProgramUrl(chain, id, 'v5');
+      const urlPath = new URL(url, window.location.origin).pathname;
+      window.history.pushState({}, '', urlPath);
       setRoute({ page: p, programId: id, programVersion: 'v5', programNetwork: chain });
     } else {
       // Any non-program navigation: clear programNetwork so the URL-chain sync

@@ -19,7 +19,7 @@ import {
 } from '@/lib/grantflowV4';
 import { useI18n } from '@/hooks/useI18n';
 import type { StringKey } from '@/lib/i18n';
-import { useV5ProgramCount, GRANTFLOW_V5_ABI, parseSponsorMeta } from '@/hooks/useGrantFlowV5';
+import { useV5ProgramCount, GRANTFLOW_V5_ABI, parseSponsorMeta, buildProgramUrl } from '@/hooks/useGrantFlowV5';
 import { formatUnits } from 'viem';
 
 const PAGE_SIZE = 20;
@@ -595,13 +595,11 @@ function V5ProgramsSection({ search, onSelectV5 }: { search: string; onSelectV5:
       ) : (
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(c => (
-            <article key={c.id}
-              onClick={() => onSelectV5(c.id)}
-              onKeyDown={e => e.key === 'Enter' && onSelectV5(c.id)}
-              tabIndex={0}
-              role="button"
+            <a key={c.id}
+              href={new URL(buildProgramUrl(config.name, c.id, 'v5', c.name), window.location.origin).pathname}
+              onClick={e => { e.preventDefault(); onSelectV5(c.id); }}
               aria-label={`Open V5 program: ${c.name}`}
-              className="rounded-2xl p-4 cursor-pointer transition-all hover:scale-[1.01] focus-visible:outline-2"
+              className="rounded-2xl p-4 cursor-pointer transition-all hover:scale-[1.01] focus-visible:outline-2 block no-underline"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
             >
               <div className="flex items-center gap-2 mb-2">
@@ -631,7 +629,7 @@ function V5ProgramsSection({ search, onSelectV5 }: { search: string; onSelectV5:
               {c.sponsorName && (
                 <p className="text-xs mt-1 truncate" style={{ color: 'var(--text-muted)' }}>{c.sponsorName}</p>
               )}
-            </article>
+            </a>
           ))}
         </div>
       )}

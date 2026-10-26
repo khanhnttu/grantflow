@@ -249,7 +249,7 @@ export function CreateProgramV4({ onDone }: Props) {
       }
     } catch { newPid = 0; }
 
-    const shareUrl = buildProgramUrl(config.name, newPid ?? 0, 'v5');
+    const shareUrl = buildProgramUrl(config.name, newPid ?? 0, 'v5', name);
     setSuccess({ programId: newPid ?? 0, programName: name, shareUrl });
     setBusy(false);
   };

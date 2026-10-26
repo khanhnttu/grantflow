@@ -715,28 +715,75 @@ function parseV5Error(err: unknown): string {
 
 // ── Shareable URL helpers ─────────────────────────────────────────────────────
 
+const CANONICAL_BASE = 'https://grantflowapp.vercel.app';
+
+/** slugify — ASCII-safe slug from a program name (Vietnamese-aware) */
+export function slugify(name: string): string {
+  // Decompose accented characters into base + combining marks, strip marks
+  const ascii = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return ascii
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')   // non-alphanumeric → dash
+    .replace(/^-+|-+$/g, '')        // trim leading/trailing dashes
+    .slice(0, 60);                  // cap at 60 chars
+}
+
+/**
+ * buildProgramUrl — canonical URL for a V5/V4 program.
+ *
+ * Mainnet V5:  /programs/<slug>-<id>
+ * Testnet V5:  /testnet/programs/<slug>-<id>
+ * V4 legacy:   /programs/v4/<slug>-<id>  (mainnet only legacy)
+ * Old /p/ URLs still parsed by parseProgramPath for redirect.
+ */
 export function buildProgramUrl(
   chainKey: 'mainnet' | 'testnet',
   programId: number,
-  version: 'v5' | 'v4' = 'v5'
+  version: 'v5' | 'v4' = 'v5',
+  programName = ''
 ): string {
-  const base = typeof window !== 'undefined'
-    ? `${window.location.origin}`
-    : 'https://grantflowapp.vercel.app';
-  return `${base}/p/${version}-${chainKey}/${programId}`;
+  const origin = typeof window !== 'undefined'
+    ? window.location.origin
+    : CANONICAL_BASE;
+  const slug = programName ? `${slugify(programName)}-` : '';
+  if (version === 'v4') {
+    return `${origin}/programs/v4/${slug}${programId}`;
+  }
+  if (chainKey === 'testnet') {
+    return `${origin}/testnet/programs/${slug}${programId}`;
+  }
+  return `${origin}/programs/${slug}${programId}`;
 }
 
-export function parseProgramPath(
-  pathname: string
-): { version: 'v5' | 'v4'; chain: 'mainnet' | 'testnet'; programId: number } | null {
-  // /p/<version>-<chain>/<id>
-  const m = pathname.match(/^\/p\/(v5|v4)-(mainnet|testnet)\/(\d+)$/);
-  if (!m) return null;
-  return {
-    version: m[1] as 'v5' | 'v4',
-    chain:   m[2] as 'mainnet' | 'testnet',
-    programId: parseInt(m[3], 10),
+export type ProgramPathResult = {
+  version: 'v5' | 'v4';
+  chain: 'mainnet' | 'testnet';
+  programId: number;
+};
+
+export function parseProgramPath(pathname: string): ProgramPathResult | null {
+  // New clean URLs
+  // Mainnet V5:  /programs/<slug>-<id>  or /programs/<id>
+  const mv5 = pathname.match(/^\/programs\/(?!v4\/)(?:.*-)?(\d+)\/?$/);
+  if (mv5) return { version: 'v5', chain: 'mainnet', programId: parseInt(mv5[1], 10) };
+
+  // Testnet V5:  /testnet/programs/<slug>-<id>
+  const tv5 = pathname.match(/^\/testnet\/programs\/(?:.*-)?(\d+)\/?$/);
+  if (tv5) return { version: 'v5', chain: 'testnet', programId: parseInt(tv5[1], 10) };
+
+  // V4 legacy:  /programs/v4/<slug>-<id>
+  const v4 = pathname.match(/^\/programs\/v4\/(?:.*-)?(\d+)\/?$/);
+  if (v4) return { version: 'v4', chain: 'mainnet', programId: parseInt(v4[1], 10) };
+
+  // Old /p/ URLs — handled for redirect
+  const old = pathname.match(/^\/p\/(v5|v4)-(mainnet|testnet)\/(\d+)$/);
+  if (old) return {
+    version: old[1] as 'v5' | 'v4',
+    chain:   old[2] as 'mainnet' | 'testnet',
+    programId: parseInt(old[3], 10),
   };
+
+  return null;
 }
 
 /** formatUsdcV5 — format bigint USDC to human-readable string */
