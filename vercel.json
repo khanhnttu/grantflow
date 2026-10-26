@@ -10,23 +10,26 @@
   },
   "headers": [
     {
-      "source": "/og/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, s-maxage=300, stale-while-revalidate=600" }]
+      "source": "/og/(.*)\\.png",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=300, stale-while-revalidate=600" },
+        { "key": "Content-Type",  "value": "image/png" }
+      ]
     }
   ],
   "redirects": [
-    { "source": "/p/v5-mainnet/:id", "destination": "/programs/program-:id", "permanent": true },
-    { "source": "/p/v5-testnet/:id", "destination": "/testnet/programs/program-:id", "permanent": true },
-    { "source": "/p/v4-mainnet/:id", "destination": "/programs/v4/program-:id", "permanent": true },
-    { "source": "/p/v4-testnet/:id", "destination": "/testnet/programs/v4/program-:id", "permanent": true }
+    { "source": "/p/v5-mainnet/:id", "destination": "/programs/program-:id",          "permanent": true },
+    { "source": "/p/v5-testnet/:id", "destination": "/testnet/programs/program-:id",   "permanent": true },
+    { "source": "/p/v4-mainnet/:id", "destination": "/programs/v4/program-:id",        "permanent": true },
+    { "source": "/p/v4-testnet/:id", "destination": "/testnet/programs/v4/program-:id","permanent": true }
   ],
-  "routes": [
-    { "src": "/sitemap.xml",                        "dest": "/api/sitemap"       },
-    { "src": "/api/og",                              "dest": "/api/og"            },
-    { "src": "/programs/(.*)",                       "dest": "/api/program-page"  },
-    { "src": "/testnet/programs/(.*)",               "dest": "/api/program-page"  },
-    { "src": "^/assets/(.*)",                        "dest": "/assets/$1"         },
-    { "src": "^/og/(.*)",                            "dest": "/og/$1"             },
-    { "src": "/(.*)",                                "dest": "/index.html"        }
+  "rewrites": [
+    { "source": "/sitemap.xml",                  "destination": "/api/sitemap"      },
+    { "source": "/programs/:path*",              "destination": "/api/program-page" },
+    { "source": "/testnet/programs/:path*",      "destination": "/api/program-page" },
+    {
+      "source": "/((?!assets/|og/|api/|_next/|robots\\.txt|favicon\\.ico).*)",
+      "destination": "/index.html"
+    }
   ]
 }
