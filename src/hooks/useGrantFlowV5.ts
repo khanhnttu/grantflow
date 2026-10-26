@@ -262,7 +262,7 @@ export function useV5ProgramCount() {
   const [count, setCount] = useState<number | undefined>(undefined);
 
   const refetch = useCallback(async () => {
-    if (!config.v5Address) return;
+    if (!config.v5Address) { setCount(0); return; }
     try {
       const n = await appClient.readContract({
         address: config.v5Address,
@@ -270,8 +270,16 @@ export function useV5ProgramCount() {
         functionName: 'programCount',
       });
       setCount(Number(n));
-    } catch { /* ignore */ }
+    } catch { setCount(0); }
   }, [config, appClient]);
+
+  // Trigger on mount and whenever the app-selected network changes
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => { if (!cancelled) await refetch(); };
+    void run();
+    return () => { cancelled = true; };
+  }, [refetch]);
 
   return { count, refetch };
 }

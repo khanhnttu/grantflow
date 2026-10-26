@@ -494,7 +494,8 @@ function V5ProgramsSection({ search, onSelectV5 }: { search: string; onSelectV5:
   const [loadingV5, setLoadingV5] = useState(false);
 
   const loadV5 = useCallback(async () => {
-    if (!config.v5Address || !count) { setCards([]); return; }
+    if (!config.v5Address || count === 0) { setCards([]); return; }
+    if (count === undefined) return; // still loading count
     setLoadingV5(true);
     try {
       const results = await Promise.all(
@@ -541,7 +542,27 @@ function V5ProgramsSection({ search, onSelectV5 }: { search: string; onSelectV5:
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadV5]);
 
-  if (!config.v5Address || count === 0) return null;
+  // Hide section entirely when V5 not deployed on this network
+  if (!config.v5Address) return null;
+  // While count is loading, show a small spinner so the section doesn't flash
+  if (count === undefined) return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Zap size={14} style={{ color: 'var(--accent)' }} />
+        <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>New Programs</span>
+        <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+          style={{ background: 'var(--accent)', color: '#fff' }}>V5</span>
+      </div>
+      <div className="flex gap-3 pb-1">
+        {[1,2].map(i => (
+          <div key={i} className="flex-shrink-0 w-52 h-28 rounded-2xl animate-pulse"
+            style={{ background: 'var(--surface)' }} />
+        ))}
+      </div>
+    </div>
+  );
+  // V5 address exists but count is 0 — hide the section
+  if (count === 0) return null;
 
   const filtered = cards.filter(c =>
     !search || c.name.toLowerCase().includes(search.toLowerCase())
