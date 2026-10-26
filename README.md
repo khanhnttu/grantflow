@@ -11,8 +11,8 @@ Built with [Arc Studio](https://studio.arc.io)
 | | |
 |---|---|
 | **App** | [grantflowapp.vercel.app](https://grantflowapp.vercel.app) |
-| **GrantFlowV5** | *mainnet not yet deployed — owner deploys from browser wallet* |
-| **GrantFlowV5 (testnet)** | `0x46e46f33c069c8093e3e177e8be8203537fecbca` ([explorer](https://explorer.testnet.arc.io/address/0x46e46f33c069c8093e3e177e8be8203537fecbca)) |
+| **GrantFlowV5** | `0xe67ec49a6618cc205fab934fc76f8a271cc77c37` ([explorer](https://explorer.arc.io/address/0xe67ec49a6618cc205fab934fc76f8a271cc77c37)) |
+| **GrantFlowV5 (testnet)** | `0x23d26fb2661497c1e658e8d717df8a7dea2f62c0` ([explorer](https://explorer.testnet.arc.io/address/0x23d26fb2661497c1e658e8d717df8a7dea2f62c0)) |
 | **GrantFlowV4** | `0x41ffdab65fca60bda9beb455285d29ab753c3d2e` ([explorer](https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e)) (legacy active) |
 | **V4 deploy tx** | `0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617` |
 | **GrantFlowV3** | `0x7c2866a62e6ad73e15e243d4341219eb3995fe7d` ([explorer](https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d)) (legacy) |
@@ -59,13 +59,16 @@ The contract owner (Ownable2Step) can update the fee rate and recipient on-chain
 
 | Contract | Chain | Address | Explorer |
 |---|---|---|---|
-| GrantFlowV4 (**active**) | Arc Mainnet | `0x41ffdab65fca60bda9beb455285d29ab753c3d2e` | [View](https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e) |
-| GrantFlowV4 (testnet) | Arc Testnet | `0x8a8d4e2378842d02690e247c9241842a30bbf7c4` | [View](https://explorer.testnet.arc.io/address/0x8a8d4e2378842d02690e247c9241842a30bbf7c4) |
+| GrantFlowV5 (**active** — team-split, push-payout) | Arc Mainnet | `0xe67ec49a6618cc205fab934fc76f8a271cc77c37` | [View](https://explorer.arc.io/address/0xe67ec49a6618cc205fab934fc76f8a271cc77c37) |
+| GrantFlowV5 (testnet **active**) | Arc Testnet | `0x23d26fb2661497c1e658e8d717df8a7dea2f62c0` | [View](https://explorer.testnet.arc.io/address/0x23d26fb2661497c1e658e8d717df8a7dea2f62c0) |
+| GrantFlowV4 (legacy) | Arc Mainnet | `0x41ffdab65fca60bda9beb455285d29ab753c3d2e` | [View](https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e) |
+| GrantFlowV4 (testnet legacy) | Arc Testnet | `0x0754d3359f18be2079c6d3cea29658b464cfe946` | [View](https://explorer.testnet.arc.io/address/0x0754d3359f18be2079c6d3cea29658b464cfe946) |
 | GrantFlowV3 (legacy) | Arc Mainnet | `0x7c2866a62e6ad73e15e243d4341219eb3995fe7d` | [View](https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d) |
 | GrantFlowV3 (testnet legacy) | Arc Testnet | `0x3805f86f71b47480a2b31d563ce1620b490a841f` | [View](https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f) |
 
+V5 Mainnet deploy tx: `0x5872ac6c5376700e505667170e180f8d4b92b8d07dfae506bb97d0e44b599d20`
 V4 Mainnet deploy tx: `0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617`
-V4 constructor args: `usdc=0x3600000000000000000000000000000000000000`, `feeRecipient=0x62628A9BB100D15494D00f6C76c22C975bBB7195`, `feeBps=100`
+Constructor args (V5/V4/V3, all chains): `usdc=0x3600000000000000000000000000000000000000`, `feeRecipient=0x62628A9BB100D15494D00f6C76c22C975bBB7195`, `feeBps=100`
 
 ---
 
@@ -84,12 +87,19 @@ bun install
 
 ---
 
-## New in V4 (GrantFlowV4)
+## V5 — the active contract (GrantFlowV5)
 
-GrantFlowV4 adds a full hackathon-contest flow with ranked prizes, two-phase deadlines (Submission then Judging), conflict-of-interest guards (sponsors/judges cannot submit), a judge vote budget per prize tier, and a pull-claim payout model.
+GrantFlowV5 is the default contract for all new programs. It adds team submissions (up to 5 members, percentage split in basis points summing to 10,000), push-payout finalization (prizes are transferred directly to each winner and team member in the finalize transaction — no claim step), sponsor metadata (name, website/X, logo) stored in the description JSON envelope, and `updateProgram` (sponsor can edit name/description/deadlines before any submissions exist). Programs can be cancelled for a full sponsor refund.
+
+V5 Mainnet: `0xe67ec49a6618cc205fab934fc76f8a271cc77c37` (deploy tx `0x5872ac6c5376700e505667170e180f8d4b92b8d07dfae506bb97d0e44b599d20`).
+V5 Testnet: `0x23d26fb2661497c1e658e8d717df8a7dea2f62c0` (45/45 Foundry tests passing, 23/23 e2e on Arc Testnet).
+
+## V4 (GrantFlowV4 — legacy)
+
+GrantFlowV4 has ranked prizes, two-phase deadlines, conflict-of-interest guards, and a pull-claim payout model. All V4 programs remain viewable and claimable.
 
 V4 Mainnet: `0x41ffdab65fca60bda9beb455285d29ab753c3d2e` (Arc Mainnet, deploy tx `0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617`).
-V4 Testnet: `0x8a8d4e2378842d02690e247c9241842a30bbf7c4` (68/68 Foundry tests passing, both auditors: no material findings).
+V4 Testnet: `0x0754d3359f18be2079c6d3cea29658b464cfe946`.
 
 ## Environment variables
 

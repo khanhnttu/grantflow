@@ -23,13 +23,15 @@ GrantFlow is an onchain USDC grant and hackathon payout platform on Arc. Sponsor
 | Contract   | Chain        | Address                                       | Explorer |
 |------------|--------------|-----------------------------------------------|----------|
 | GrantFlowV5 (testnet, **active** — team-split, push-payout, 23/23 e2e pass) | Arc Testnet | 0x23d26fb2661497c1e658e8d717df8a7dea2f62c0 | https://explorer.testnet.arc.io/address/0x23d26fb2661497c1e658e8d717df8a7dea2f62c0 |
-| GrantFlowV5 (MAINNET) | Arc Mainnet | *not yet deployed — browser wallet required* | — |
+| GrantFlowV5 (MAINNET, **active** — team-split, push-payout) | Arc Mainnet | 0xe67ec49a6618cc205fab934fc76f8a271cc77c37 | https://explorer.arc.io/address/0xe67ec49a6618cc205fab934fc76f8a271cc77c37 |
 | GrantFlowV4 (MAINNET, legacy active) | Arc Mainnet | 0x41ffdab65fca60bda9beb455285d29ab753c3d2e | https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e |
 | GrantFlowV4 (testnet, legacy active) | Arc Testnet  | 0x0754d3359f18be2079c6d3cea29658b464cfe946    | https://explorer.testnet.arc.io/address/0x0754d3359f18be2079c6d3cea29658b464cfe946 |
 | GrantFlowV4 (testnet, old — wrong owner) | Arc Testnet  | 0x8a8d4e2378842d02690e247c9241842a30bbf7c4    | retired |
 | GrantFlow v3 (MAINNET, legacy) | Arc Mainnet  | 0x7c2866a62e6ad73e15e243d4341219eb3995fe7d    | https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d |
 | GrantFlow v3 (testnet, legacy) | Arc Testnet  | 0x3805f86f71b47480a2b31d563ce1620b490a841f    | https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f |
 
+V5 Mainnet deploy tx: 0x5872ac6c5376700e505667170e180f8d4b92b8d07dfae506bb97d0e44b599d20
+V5 Mainnet feeBps()=100, owner()=feeRecipient()=0x62628A9BB100D15494D00f6C76c22C975bBB7195, usdc()=0x3600000000000000000000000000000000000000 ✓ (verified 2026-10-26)
 V4 Mainnet deploy tx: 0xb36e61207035267a2ef178bcf5daacbeb0cae53fb4e54576bed72f87645a1617
 V5 Testnet deploy tx: 0x8043aa74fb757270f8d3640f26a87e742974926e46353deca51299ae7a66e030
 V5 Testnet feeRecipient(): 0x62628A9BB100D15494D00f6C76c22C975bBB7195 ✓
