@@ -48,7 +48,7 @@ function buildCard(name, pool, sponsor, deadline, isHome) {
     else { line1 = name.slice(0, 30) + '…'; }
   }
   const titleSz = isHome ? 72 : (line2 ? 62 : 68);
-  const poolTxt = isHome ? 'Powered by USDC on Arc' : `${pool} prize pool`;
+  const poolTxt = isHome ? 'Powered by USDC on Arc' : `${pool} USDC prize pool`;
   const subTxt  = isHome ? 'Team splits · Push payout · USDC' : deadline;
 
   // Badge row items — always exactly 1 item (no sponsor in badge to avoid variable-length array)
