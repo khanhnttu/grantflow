@@ -10,11 +10,13 @@
       "includeFiles": "dist/index.html"
     },
     "api/og.ts": {
-      "memory": 512,
-      "maxDuration": 15,
-      "includeFiles": "node_modules/@fontsource/inter/files/inter-latin-400-normal.woff,node_modules/@fontsource/inter/files/inter-latin-700-normal.woff"
+      "memory": 256,
+      "maxDuration": 15
     },
-    "api/sitemap.ts": { "memory": 256, "maxDuration": 15 }
+    "api/sitemap.ts": {
+      "memory": 256,
+      "maxDuration": 15
+    }
   },
   "headers": [
     {
@@ -26,10 +28,10 @@
     }
   ],
   "redirects": [
-    { "source": "/p/v5-mainnet/:id", "destination": "/programs/program-:id",          "permanent": true },
-    { "source": "/p/v5-testnet/:id", "destination": "/testnet/programs/program-:id",   "permanent": true },
-    { "source": "/p/v4-mainnet/:id", "destination": "/programs/v4/program-:id",        "permanent": true },
-    { "source": "/p/v4-testnet/:id", "destination": "/testnet/programs/v4/program-:id","permanent": true }
+    { "source": "/p/v5-mainnet/:id", "destination": "/programs/program-:id",           "permanent": true },
+    { "source": "/p/v5-testnet/:id", "destination": "/testnet/programs/program-:id",    "permanent": true },
+    { "source": "/p/v4-mainnet/:id", "destination": "/programs/v4/program-:id",         "permanent": true },
+    { "source": "/p/v4-testnet/:id", "destination": "/testnet/programs/v4/program-:id", "permanent": true }
   ],
   "rewrites": [
     { "source": "/sitemap.xml",             "destination": "/api/sitemap"      },
