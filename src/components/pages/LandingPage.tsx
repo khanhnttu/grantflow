@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { LogoMark } from '@/components/BrandLogo';
 import { TokenUSDC } from '@web3icons/react';
-import { ACTIVE_CHAIN_ID, GRANTFLOW_ADDRESS, IS_MAINNET, USDC_ADDRESS } from '@/lib/chainConfig';
+import { ACTIVE_CHAIN_ID, GRANTFLOW_ADDRESS, IS_MAINNET } from '@/lib/chainConfig';
 import { useI18n } from '@/hooks/useI18n';
 import { usePublicClient } from 'wagmi';
 import { GRANTFLOW_V4_ABI, getV4Address } from '@/lib/grantflowV4';
@@ -158,28 +158,40 @@ function useLiveStats(): LiveStats {
       // Emit program count immediately
       if (!cancelled) setStats(s => ({ ...s, totalPrograms: total, usdcPaidOut: s.usdcPaidOut ?? 0n }));
 
-      // Step 2 — locked = sum of USDC balances held by each contract (always accurate, no tuple parsing)
-      const ERC20_BALANCE_ABI = [{
+      // Step 2 — locked = USDC.balanceOf for each GrantFlow contract on the active chain.
+      // Addresses are hardcoded per network so there's no env-var dependency here.
+      const USDC = '0x3600000000000000000000000000000000000000' as `0x${string}`; // same on both Arc chains
+      const BAL_ABI = [{
         type: 'function', name: 'balanceOf', stateMutability: 'view',
         inputs: [{ name: 'account', type: 'address' }],
         outputs: [{ name: '', type: 'uint256' }],
       }] as const;
 
-      // v4Addr is already chain-correct (getV4Address uses ACTIVE_CHAIN_ID at module load)
-      const v3Addr = GRANTFLOW_ADDRESS;
+      // Contract addresses by network
+      const contracts: `0x${string}`[] = IS_MAINNET
+        ? [
+            '0x7c2866a62e6ad73e15e243d4341219eb3995fe7d', // V3 mainnet
+            '0x41ffdab65fca60bda9beb455285d29ab753c3d2e', // V4 mainnet
+            '0xe67ec49a6618cc205fab934fc76f8a271cc77c37', // V5 mainnet
+          ]
+        : [
+            '0x3805f86f71b47480a2b31d563ce1620b490a841f', // V3 testnet
+            '0x0754d3359f18be2079c6d3cea29658b464cfe946', // V5 testnet (no V4 testnet locked)
+          ];
 
-      const [balV3, balV4, balV5] = await Promise.all([
-        client.readContract({ address: USDC_ADDRESS, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [v3Addr] }).catch(() => 0n),
-        client.readContract({ address: USDC_ADDRESS, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [v4Addr] }).catch(() => 0n),
-        client.readContract({ address: USDC_ADDRESS, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [V5_ACTIVE_ADDR] }).catch(() => 0n),
-      ]);
+      const bals = await Promise.all(
+        contracts.map(addr =>
+          client.readContract({ address: USDC, abi: BAL_ABI, functionName: 'balanceOf', args: [addr] }).catch(() => 0n)
+        )
+      );
       if (cancelled) return;
 
-      // Sanity guard: USDC has 6 decimals; clamp any single value > 10M USDC
-      // (catches 18-decimal native reads or wrong-chain balances)
-      const MAX_SANE = 10_000_000n * 1_000_000n; // 10M USDC in 6-dec raw units
-      const safe = (v: bigint) => (v > 0n && v <= MAX_SANE ? v : 0n);
-      const locked = safe(balV3 ?? 0n) + safe(balV4 ?? 0n) + safe(balV5 ?? 0n);
+      // Sum; clamp any single value > 10 000 USDC (guards against 18-dec native reads)
+      const MAX_SANE = 10_000n * 1_000_000n; // 10 000 USDC in 6-dec raw
+      const locked = bals.reduce((acc, b) => {
+        const v = b ?? 0n;
+        return acc + (v <= MAX_SANE ? v : 0n);
+      }, 0n);
       if (!cancelled) setStats({ totalPrograms: total, usdcLocked: locked, usdcPaidOut: 0n });
     }
 
