@@ -5,18 +5,14 @@ import {
 } from 'lucide-react';
 import { LogoMark } from '@/components/BrandLogo';
 import { TokenUSDC } from '@web3icons/react';
-import { ACTIVE_CHAIN_ID, GRANTFLOW_ADDRESS, IS_MAINNET } from '@/lib/chainConfig';
 import { useI18n } from '@/hooks/useI18n';
-import { usePublicClient } from 'wagmi';
-import { GRANTFLOW_V4_ABI, getV4Address } from '@/lib/grantflowV4';
+import { useNetworkStore } from '@/hooks/useNetworkStore';
+import { GRANTFLOW_V4_ABI } from '@/lib/grantflowV4';
 import { GRANTFLOW_ABI } from '@/lib/grantflow';
 import { GRANTFLOW_V5_ABI } from '@/hooks/useGrantFlowV5';
 
-// V5 addresses (pinned to mainnet for the security card)
+// V5 mainnet address — hardcoded for the security card (always shows mainnet)
 const V5_MAINNET_ADDR = (import.meta.env.VITE_GRANTFLOW_V5_ADDRESS_MAINNET || '0xe67ec49a6618cc205fab934fc76f8a271cc77c37') as `0x${string}`;
-const V5_ACTIVE_ADDR  = ((IS_MAINNET
-  ? import.meta.env.VITE_GRANTFLOW_V5_ADDRESS_MAINNET
-  : import.meta.env.VITE_GRANTFLOW_V5_ADDRESS) || V5_MAINNET_ADDR) as `0x${string}`;
 
 import type { AppPage } from '@/components/AppShell';
 
@@ -131,73 +127,49 @@ interface LiveStats {
 }
 
 function useLiveStats(): LiveStats {
-  const v4Addr = getV4Address(ACTIVE_CHAIN_ID);
-  const client = usePublicClient({ chainId: ACTIVE_CHAIN_ID });
+  // Use the app-selected network client — independent of the connected wallet chain
+  const { appClient, config } = useNetworkStore();
   const [stats, setStats] = useState<LiveStats>({ totalPrograms: null, usdcLocked: null, usdcPaidOut: null });
 
   useEffect(() => {
-    if (!client) return;
-    let cancelled = false;
+    let gone = false;
 
     async function load() {
-      if (cancelled || !client) return;
-
-      // Step 1 — read three programCounts in parallel (fail-safe)
-      const [v4CountRaw, v3CountRaw, v5CountRaw] = await Promise.all([
-        client.readContract({ address: v4Addr, abi: GRANTFLOW_V4_ABI, functionName: 'programCount' }).catch(() => null),
-        client.readContract({ address: GRANTFLOW_ADDRESS, abi: GRANTFLOW_ABI, functionName: 'programCount' }).catch(() => null),
-        client.readContract({ address: V5_ACTIVE_ADDR, abi: GRANTFLOW_V5_ABI, functionName: 'programCount' }).catch(() => null),
+      // Step 1 — program counts from all three versions on the app-selected network
+      const [v4Raw, v3Raw, v5Raw] = await Promise.all([
+        appClient.readContract({ address: config.v4Address, abi: GRANTFLOW_V4_ABI, functionName: 'programCount' }).catch(() => null),
+        appClient.readContract({ address: config.v3Address, abi: GRANTFLOW_ABI,    functionName: 'programCount' }).catch(() => null),
+        appClient.readContract({ address: config.v5Address, abi: GRANTFLOW_V5_ABI, functionName: 'programCount' }).catch(() => null),
       ]);
-      if (cancelled) return;
+      if (gone) return;
+      const total = (v4Raw !== null ? Number(v4Raw) : 0)
+                  + (v3Raw !== null ? Number(v3Raw) : 0)
+                  + (v5Raw !== null ? Number(v5Raw) : 0);
+      setStats(s => ({ ...s, totalPrograms: total, usdcPaidOut: s.usdcPaidOut ?? 0n }));
 
-      const v4Count = v4CountRaw !== null ? Number(v4CountRaw) : 0;
-      const v3Count = v3CountRaw !== null ? Number(v3CountRaw) : 0;
-      const v5Count = v5CountRaw !== null ? Number(v5CountRaw) : 0;
-      const total   = v4Count + v3Count + v5Count;
-
-      // Emit program count immediately
-      if (!cancelled) setStats(s => ({ ...s, totalPrograms: total, usdcPaidOut: s.usdcPaidOut ?? 0n }));
-
-      // Step 2 — locked = USDC.balanceOf for each GrantFlow contract on the active chain.
-      // Addresses are hardcoded per network so there's no env-var dependency here.
-      const USDC = '0x3600000000000000000000000000000000000000' as `0x${string}`; // same on both Arc chains
+      // Step 2 — locked = USDC.balanceOf each contract on the app-selected network
       const BAL_ABI = [{
         type: 'function', name: 'balanceOf', stateMutability: 'view',
         inputs: [{ name: 'account', type: 'address' }],
         outputs: [{ name: '', type: 'uint256' }],
       }] as const;
-
-      // Contract addresses by network
-      const contracts: `0x${string}`[] = IS_MAINNET
-        ? [
-            '0x7c2866a62e6ad73e15e243d4341219eb3995fe7d', // V3 mainnet
-            '0x41ffdab65fca60bda9beb455285d29ab753c3d2e', // V4 mainnet
-            '0xe67ec49a6618cc205fab934fc76f8a271cc77c37', // V5 mainnet
-          ]
-        : [
-            '0x3805f86f71b47480a2b31d563ce1620b490a841f', // V3 testnet
-            '0x0754d3359f18be2079c6d3cea29658b464cfe946', // V5 testnet (no V4 testnet locked)
-          ];
-
       const bals = await Promise.all(
-        contracts.map(addr =>
-          client.readContract({ address: USDC, abi: BAL_ABI, functionName: 'balanceOf', args: [addr] }).catch(() => 0n)
+        [config.v3Address, config.v4Address, config.v5Address].map(addr =>
+          appClient.readContract({ address: config.usdcAddress, abi: BAL_ABI, functionName: 'balanceOf', args: [addr] }).catch(() => 0n)
         )
       );
-      if (cancelled) return;
-
-      // Sum; clamp any single value > 10 000 USDC (guards against 18-dec native reads)
-      const MAX_SANE = 10_000n * 1_000_000n; // 10 000 USDC in 6-dec raw
-      const locked = bals.reduce((acc, b) => {
-        const v = b ?? 0n;
-        return acc + (v <= MAX_SANE ? v : 0n);
-      }, 0n);
-      if (!cancelled) setStats({ totalPrograms: total, usdcLocked: locked, usdcPaidOut: 0n });
+      if (gone) return;
+      // Clamp each balance to ≤ 10 000 USDC (6-dec) to guard against 18-dec native reads
+      const MAX_SANE = 10_000n * 1_000_000n;
+      const locked = bals.reduce((acc, b) => acc + (b !== null && b <= MAX_SANE ? b : 0n), 0n);
+      setStats(s => ({ ...s, usdcLocked: locked }));
     }
 
     void load();
-    return () => { cancelled = true; };
-  }, [client, v4Addr]);
+    return () => { gone = true; };
+  // Re-run whenever the user switches networks
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appClient]);
 
   return stats;
 }
