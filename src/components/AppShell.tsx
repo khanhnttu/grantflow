@@ -153,7 +153,7 @@ function MoreMenu({ page, onNav }: { page: AppPage; onNav: (p: AppPage) => void 
         aria-haspopup="menu"
       >
         <MoreHorizontal size={13} aria-hidden />
-        <span className="hidden md:inline">Guide</span>
+        <span className="hidden md:inline">{t('nav.guide')}</span>
       </button>
 
       {open && createPortal(

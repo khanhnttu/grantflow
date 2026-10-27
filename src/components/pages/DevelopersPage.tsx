@@ -40,7 +40,17 @@ function CodeBlock({ code }: { code: string }) {
 interface ContractRow { label: string; address: string; explorer: string; }
 const CONTRACTS: ContractRow[] = [
   {
-    label: 'GrantFlowV4 — Arc Mainnet ✦ active',
+    label: 'GrantFlowV5 — Arc Mainnet ✦ active',
+    address: '0xe67ec49a6618cc205fab934fc76f8a271cc77c37',
+    explorer: 'https://explorer.arc.io/address/0xe67ec49a6618cc205fab934fc76f8a271cc77c37',
+  },
+  {
+    label: 'GrantFlowV5 — Arc Testnet',
+    address: '0x23d26fb2661497c1e658e8d717df8a7dea2f62c0',
+    explorer: 'https://explorer.testnet.arc.io/address/0x23d26fb2661497c1e658e8d717df8a7dea2f62c0',
+  },
+  {
+    label: 'GrantFlowV4 — Arc Mainnet (legacy)',
     address: '0x41ffdab65fca60bda9beb455285d29ab753c3d2e',
     explorer: 'https://explorer.arc.io/address/0x41ffdab65fca60bda9beb455285d29ab753c3d2e',
   },
@@ -49,46 +59,30 @@ const CONTRACTS: ContractRow[] = [
     address: '0x7c2866a62e6ad73e15e243d4341219eb3995fe7d',
     explorer: 'https://explorer.arc.io/address/0x7c2866a62e6ad73e15e243d4341219eb3995fe7d',
   },
-  {
-    label: 'GrantFlowV4 — Arc Testnet',
-    address: '0x8a8d4e2378842d02690e247c9241842a30bbf7c4',
-    explorer: 'https://explorer.testnet.arc.io/address/0x8a8d4e2378842d02690e247c9241842a30bbf7c4',
-  },
-  {
-    label: 'GrantFlowV3 — Arc Testnet (legacy)',
-    address: '0x3805f86f71b47480a2b31d563ce1620b490a841f',
-    explorer: 'https://explorer.testnet.arc.io/address/0x3805f86f71b47480a2b31d563ce1620b490a841f',
-  },
 ];
 
-const EVENTS = [
-  { name: 'ProgramCreated(uint256 indexed programId, address indexed sponsor, string name, uint256 totalPool, uint256 submissionDeadline, uint256 judgingDeadline)', desc: 'Emitted when a program is created.' },
-  { name: 'Submitted(uint256 indexed programId, uint256 indexed submissionId, address indexed submitter, address projectContract, string metadataURI)', desc: 'Emitted when a builder submits.' },
-  { name: 'Voted(uint256 indexed programId, uint256 indexed submissionId, address indexed judge, uint256 totalVotes)', desc: 'Emitted when a judge votes.' },
-  { name: 'Finalized(uint256 indexed programId, uint256 winnerCount)', desc: 'Emitted when a program is finalized.' },
-  { name: 'PrizeAssigned(uint256 indexed programId, uint256 indexed submissionId, address indexed winner, uint256 amount, uint256 rank)', desc: 'Emitted once per winner on finalize.' },
-  { name: 'Claimed(address indexed recipient, uint256 amount)', desc: 'Emitted when a winner claims their prize.' },
-  { name: 'Reclaimed(uint256 indexed programId, address indexed sponsor, uint256 amount)', desc: 'Emitted when sponsor reclaims unawarded pool.' },
-  { name: 'Cancelled(uint256 indexed programId, address indexed sponsor, uint256 refund)', desc: 'Emitted when a program is cancelled.' },
-  { name: 'FeeCollected(uint256 indexed programId, uint256 amount)', desc: 'Emitted when the platform fee is transferred on creation.' },
+const EVENTS_V5 = [
+  { name: 'ProgramCreated(uint256 indexed programId, address indexed sponsor, string name, uint256 totalPool, uint256 submissionDeadline, uint256 judgingDeadline)', descKey: 'dev.ev.created' as const },
+  { name: 'Submitted(uint256 indexed programId, uint256 indexed submissionId, address indexed submitter, address projectContract, string metadataURI)', descKey: 'dev.ev.submitted' as const },
+  { name: 'Voted(uint256 indexed programId, uint256 indexed submissionId, address indexed judge, uint256 totalVotes)', descKey: 'dev.ev.voted' as const },
+  { name: 'Finalized(uint256 indexed programId, uint256 winnerCount)', descKey: 'dev.ev.finalized' as const },
+  { name: 'PrizeAssigned(uint256 indexed programId, uint256 indexed submissionId, address indexed winner, uint256 amount, uint256 rank)', descKey: 'dev.ev.prizeAssigned' as const },
+  { name: 'Cancelled(uint256 indexed programId, address indexed sponsor, uint256 refund)', descKey: 'dev.ev.cancelled' as const },
+  { name: 'FeeCollected(uint256 indexed programId, uint256 amount)', descKey: 'dev.ev.fee' as const },
 ];
 
 const FUNCTIONS = [
-  { name: 'createProgram(name, description, prizes[], subDeadline, judgeDeadline, judges[], type, category)', type: 'write', desc: 'Create a program. USDC approve first.' },
-  { name: 'submit(programId, projectContract, metadataURI)', type: 'write', desc: 'Submit during submission phase.' },
-  { name: 'vote(programId, submissionId)', type: 'write', desc: 'Cast a judge vote during judging phase.' },
-  { name: 'finalize(programId)', type: 'write', desc: 'Finalize after judging deadline (anyone).' },
-  { name: 'claim()', type: 'write', desc: 'Pull-claim your pending prizes.' },
-  { name: 'reclaim(programId)', type: 'write', desc: 'Sponsor reclaims unawarded pool post-finalize.' },
-  { name: 'cancel(programId)', type: 'write', desc: 'Cancel before first submission (sponsor only).' },
-  { name: 'getProgram(programId)', type: 'read', desc: 'Returns full program metadata and state.' },
-  { name: 'getSubmission(programId, submissionId)', type: 'read', desc: 'Returns submission data including votes and claimed status.' },
-  { name: 'getJudges(programId)', type: 'read', desc: 'Returns the judge address array.' },
-  { name: 'submissionCount(programId)', type: 'read', desc: 'Number of submissions for a program.' },
-  { name: 'getPhase(programId)', type: 'read', desc: '0=Submission 1=Judging 2=Finalized 3=Cancelled.' },
-  { name: 'pendingClaims(address)', type: 'read', desc: 'Pending USDC claimable by an address.' },
-  { name: 'programCount()', type: 'read', desc: 'Total programs created.' },
-  { name: 'votesRemaining(programId, judge)', type: 'read', desc: 'Votes left for a judge in a program.' },
+  { name: 'createProgram(name, description, prizes[], subDeadline, judgeDeadline, judges[], type, category)', type: 'write', descKey: 'dev.fn.create' as const },
+  { name: 'submit(programId, projectContract, metadataURI)', type: 'write', descKey: 'dev.fn.submit' as const },
+  { name: 'vote(programId, submissionId)', type: 'write', descKey: 'dev.fn.vote' as const },
+  { name: 'finalize(programId)', type: 'write', descKey: 'dev.fn.finalize' as const },
+  { name: 'cancel(programId)', type: 'write', descKey: 'dev.fn.cancel' as const },
+  { name: 'getProgram(programId)', type: 'read', descKey: 'dev.fn.getProgram' as const },
+  { name: 'getSubmission(programId, submissionId)', type: 'read', descKey: 'dev.fn.getSub' as const },
+  { name: 'getJudges(programId)', type: 'read', descKey: 'dev.fn.getJudges' as const },
+  { name: 'submissionCount(programId)', type: 'read', descKey: 'dev.fn.subCount' as const },
+  { name: 'programCount()', type: 'read', descKey: 'dev.fn.progCount' as const },
+  { name: 'votesRemaining(programId, judge)', type: 'read', descKey: 'dev.fn.votesLeft' as const },
 ];
 
 const READ_SNIPPET = `import { createPublicClient, http } from 'viem'
@@ -101,14 +95,14 @@ const arc = defineChain({
   rpcUrls: { default: { http: ['https://rpc.mainnet.arc.io'] } },
 })
 
-// GrantFlowV4 — Arc Mainnet (deployed 2026-10-24)
-const V4_ADDRESS = '0x41ffdab65fca60bda9beb455285d29ab753c3d2e'
+// GrantFlowV5 — Arc Mainnet (push-payout model)
+const V5_ADDRESS = '0xe67ec49a6618cc205fab934fc76f8a271cc77c37'
 
 const client = createPublicClient({ chain: arc, transport: http() })
 
 // Read program count
 const count = await client.readContract({
-  address: V4_ADDRESS,
+  address: V5_ADDRESS,
   abi: [{ type: 'function', name: 'programCount',
           inputs: [], outputs: [{ type: 'uint256' }],
           stateMutability: 'view' }],
@@ -117,7 +111,7 @@ const count = await client.readContract({
 
 // Read a specific program
 const program = await client.readContract({
-  address: V4_ADDRESS,
+  address: V5_ADDRESS,
   abi: [{ type: 'function', name: 'getProgram',
           inputs: [{ name: 'programId', type: 'uint256' }],
           outputs: [
@@ -130,7 +124,6 @@ const program = await client.readContract({
             { name: 'judgingDeadline', type: 'uint256' },
             { name: 'programType', type: 'uint8' },
             { name: 'category', type: 'uint8' },
-            { name: 'exists', type: 'bool' },
             { name: 'finalized', type: 'bool' },
             { name: 'cancelled', type: 'bool' },
           ],
@@ -142,11 +135,12 @@ console.log(program)`;
 
 const LISTEN_SNIPPET = `import { parseAbiItem } from 'viem'
 
-// V4_ADDRESS = '0x41ffdab65fca60bda9beb455285d29ab753c3d2e' (Arc Mainnet)
+// V5_ADDRESS = '0xe67ec49a6618cc205fab934fc76f8a271cc77c37' (Arc Mainnet)
+// V5 uses push-payout: prizes are sent in the finalize() tx, no claim() needed.
 
-// Listen for PrizeAssigned events (winners on finalize)
+// Listen for PrizeAssigned events (fired per winner during finalize)
 const unwatch = client.watchContractEvent({
-  address: V4_ADDRESS,
+  address: V5_ADDRESS,
   abi: [parseAbiItem(
     'event PrizeAssigned(uint256 indexed programId, uint256 indexed submissionId, address indexed winner, uint256 amount, uint256 rank)'
   )],
@@ -156,10 +150,10 @@ const unwatch = client.watchContractEvent({
   }),
 })
 
-// Fetch historical Claimed events
+// Fetch historical ProgramCreated events
 const logs = await client.getLogs({
-  address: V4_ADDRESS,
-  event: parseAbiItem('event Claimed(address indexed recipient, uint256 amount)'),
+  address: V5_ADDRESS,
+  event: parseAbiItem('event ProgramCreated(uint256 indexed programId, address indexed sponsor, string name, uint256 totalPool, uint256 submissionDeadline, uint256 judgingDeadline)'),
   fromBlock: 'earliest',
   toBlock: 'latest',
 })`;
@@ -213,11 +207,11 @@ export function DevelopersPage() {
       <section className="mb-10">
         <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>{t('dev.source')}</h2>
         <div className="flex gap-3">
-          <a href="https://github.com/khanhnttu/grantflow/blob/main/contracts/GrantFlowV4.sol"
+          <a href="https://github.com/khanhnttu/grantflow/blob/main/contracts/GrantFlowV5.sol"
             target="_blank" rel="noreferrer"
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80"
             style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-            <ExternalLink size={14} /> GrantFlowV4.sol
+            <ExternalLink size={14} /> GrantFlowV5.sol
           </a>
           <a href="https://github.com/khanhnttu/grantflow/blob/main/contracts/test"
             target="_blank" rel="noreferrer"
@@ -232,13 +226,13 @@ export function DevelopersPage() {
       <section className="mb-10">
         <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--text)' }}>{t('dev.events')}</h2>
         <div className="space-y-2">
-          {EVENTS.map(ev => (
+          {EVENTS_V5.map(ev => (
             <div key={ev.name} className="rounded-xl px-4 py-3"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="flex items-start gap-2">
                 <code className="font-mono text-xs flex-1 leading-relaxed break-all" style={{ color: 'var(--accent)' }}>{ev.name}</code>
               </div>
-              <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>{ev.desc}</p>
+              <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>{t(ev.descKey)}</p>
             </div>
           ))}
         </div>
@@ -269,7 +263,7 @@ export function DevelopersPage() {
                       {fn.type}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5" style={{ color: 'var(--text-muted)' }}>{fn.desc}</td>
+                  <td className="px-3 py-2.5" style={{ color: 'var(--text-muted)' }}>{t(fn.descKey)}</td>
                 </tr>
               ))}
             </tbody>

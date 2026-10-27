@@ -45,7 +45,7 @@ export const VI_2 = {
   'landing.security.d2': 'Sử dụng số tiền nhỏ. Không khoá số tiền bạn không thể chấp nhận mất.',
   'landing.security.d3': 'Hợp đồng không thể nâng cấp. Lỗi không thể vá mà không triển khai lại.',
   'landing.security.d4': 'Arc Mainnet là mạng sản xuất. Giao dịch không thể hoàn tác.',
-  'landing.security.contract.label': 'Hợp đồng đã xác minh — Arc Mainnet',
+  'landing.security.contract.label': 'GrantFlowV5 — Arc Mainnet',
   'landing.security.explorer':       'Explorer',
   'landing.security.source':         'Mã nguồn',
   'landing.security.copy':           'Sao chép',

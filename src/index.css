@@ -180,7 +180,7 @@ body {
   -webkit-backdrop-filter: blur(12px);
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 50;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -214,6 +214,12 @@ body {
   .app-topbar { gap: 6px; padding: 0 8px; }
   .app-topbar--bare { padding: 0 8px; }
   .app-content { padding: 10px; }
+  /* Hide block number in network pill to save space */
+  .app-topbar .block-num { display: none; }
+  /* Keep tables inside their container */
+  .app-content table { font-size: 11px; }
+  /* Prevent banner text from overflowing */
+  .wrong-net-banner { font-size: 12px; }
 }
 
 /* ── Typography ──────────────────────────────────────────────────────────── */
@@ -351,6 +357,31 @@ body {
 @media (max-width: 400px) {
   [data-testid="ckit-button"],
   button[class*="connectkit"] { max-width: 90px; font-size: 11px; padding: 0 8px !important; }
+}
+
+/* ── ConnectKit dark mode overrides ─────────────────────────────────────── */
+/* ConnectKit defaults to a white button; in dark mode override so it matches
+   the topbar. Variables: https://docs.family.co/connectkit/theming#css-variables */
+[data-theme="dark"] {
+  --ck-connectbutton-background:        rgba(255,255,255,0.07);
+  --ck-connectbutton-color:             #e8f0fa;
+  --ck-connectbutton-border-radius:     10px;
+  --ck-connectbutton-box-shadow:        none;
+  --ck-connectbutton-hover-background:  rgba(255,255,255,0.12);
+  --ck-connectbutton-active-background: rgba(255,255,255,0.10);
+  --ck-connectbutton-balance-background:rgba(255,255,255,0.05);
+}
+
+/* ── WrongNetworkBanner — ensure readable text in dark mode ─────────────── */
+[data-theme="dark"] .wrong-net-banner {
+  background: rgba(245,158,11,0.18) !important;
+  color: #fde68a !important;
+  border-bottom-color: rgba(245,158,11,0.35) !important;
+}
+[data-theme="dark"] .wrong-net-banner strong { color: #fef3c7; }
+[data-theme="dark"] .wrong-net-banner .switch-btn {
+  background: #d97706 !important;
+  color: #1c1008 !important;
 }
 
 /* ── Scrollbar ───────────────────────────────────────────────────────────── */

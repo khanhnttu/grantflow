@@ -4,6 +4,7 @@
  */
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { Code2, Building2, Scale } from 'lucide-react';
+import { useI18n } from '@/hooks/useI18n';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,13 @@ const ROLES: { id: Role; label: string; Icon: typeof Code2 }[] = [
 
 export function RoleSwitcher({ onSwitch }: { onSwitch?: (r: Role) => void } = {}) {
   const { role, setRole } = useRole();
+  const { t } = useI18n();
+
+  const ROLE_LABELS: Record<Role, string> = {
+    hacker:    t('role.hacker'),
+    organizer: t('role.organizer'),
+    judge:     t('role.judge'),
+  };
 
   const handleClick = (id: Role) => {
     setRole(id);
@@ -55,7 +63,7 @@ export function RoleSwitcher({ onSwitch }: { onSwitch?: (r: Role) => void } = {}
       className="flex items-center gap-0.5 rounded-lg px-1 py-1"
       style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
     >
-      {ROLES.map(({ id, label, Icon }) => {
+      {ROLES.map(({ id, Icon }) => {
         const active = role === id;
         return (
           <button
@@ -68,7 +76,7 @@ export function RoleSwitcher({ onSwitch }: { onSwitch?: (r: Role) => void } = {}
             }
           >
             <Icon size={12} />
-            {label}
+            {ROLE_LABELS[id]}
           </button>
         );
       })}

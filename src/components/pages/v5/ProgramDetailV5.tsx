@@ -13,7 +13,7 @@ import {
   ArrowLeft, ExternalLink, RefreshCw, CheckCircle2, AlertTriangle,
   Globe, Edit2, Send, PlusCircle, Trash2, Users, User,
 } from 'lucide-react';
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import { formatUnits, createPublicClient, http } from 'viem';
 import { useI18n } from '@/hooks/useI18n';
 import { useNetworkStore, NETWORK_CONFIGS } from '@/hooks/useNetworkStore';
@@ -183,8 +183,8 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
     return (
       <div className="py-20 text-center">
         <p style={{ color: 'var(--text-muted)' }}>Program not found.</p>
-        <button onClick={onBack} className="mt-4 text-sm hover:underline" style={{ color: 'var(--accent)' }}>
-          ← Back
+        <button onClick={onBack} className="mt-4 inline-flex items-center gap-1 text-sm hover:underline" style={{ color: 'var(--accent)' }}>
+          <ArrowLeft size={13} /> {t('program.back')}
         </button>
       </div>
     );
@@ -207,7 +207,7 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
                      nowLive < prog.submissionDeadline;
   const canSubmit  = !hasSubmitted && !isJudge && !isSponsor && phase === Phase.Submission;
   const canVote    = isJudge && phase === Phase.Judging && votesLeft > 0;
-  const canFinalize = (isSponsor || role === 'judge') && phase === Phase.Judging &&
+  const canFinalize = !!account && phase === Phase.Judging &&
                       nowLive >= prog.judgingDeadline;
   const canCancel  = isSponsor && !prog.finalized && !prog.cancelled && subCount === 0;
 
@@ -384,8 +384,8 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
           <StatCell label={t('program.pool')} value={`${fmt(pool)} USDC`} />
           <StatCell label={t('program.prizes')} value={`${prog.prizes.length} ${t('program.ranks')}`} />
-          <StatCell label={t('explore.subOpen')} value={new Date(prog.submissionDeadline * 1000).toLocaleDateString()} />
-          <StatCell label={t('explore.judging')} value={new Date(prog.judgingDeadline * 1000).toLocaleDateString()} />
+          <StatCell label={t('program.subDeadline')} value={new Date(prog.submissionDeadline * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
+          <StatCell label={t('program.judDeadline')} value={new Date(prog.judgingDeadline * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
         </div>
 
         {/* Countdown / phase banner */}
@@ -403,6 +403,7 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
                   <button
                     onClick={() => void handleFinalize()}
                     disabled={busy || disableTx}
+                    title={disableTx ? t('banner.txDisabled') : undefined}
                     className="px-3 py-1.5 rounded-lg font-medium text-xs disabled:opacity-50 transition-opacity hover:opacity-80"
                     style={{ background: '#10b981', color: '#fff' }}>
                     {busy ? '…' : t('results.finalizeCta')}
@@ -492,7 +493,7 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
                   {shortAddr(prog.sponsor)} <ExternalLink size={10} />
                 </a>
               } />
-              <DetailRow label="Contract" value={
+              <DetailRow label={t('program.contract')} value={
                 <a href={`${explorer}/address/${readCfg.v5Address}`} target="_blank" rel="noreferrer"
                   className="inline-flex items-center gap-1 font-mono hover:underline"
                   style={{ color: 'var(--accent)' }}>
@@ -727,14 +728,14 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
               </p>
             )}
             {judges.map(j => (
-              <div key={j} className="flex items-center justify-between px-3 py-2 rounded-xl text-xs"
-                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                <span className="font-mono" style={{ color: 'var(--text)' }}>{j}</span>
-                <a href={`${explorer}/address/${j}`} target="_blank" rel="noreferrer"
-                  style={{ color: 'var(--text-muted)' }}>
-                  <ExternalLink size={11} />
-                </a>
-              </div>
+              <JudgeRow
+                key={j}
+                judge={j}
+                programId={programId}
+                totalVotes={prog.prizes.length}
+                explorer={explorer}
+                readCfg={readCfg}
+              />
             ))}
           </div>
         )}
@@ -780,6 +781,38 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function JudgeRow({ judge, programId, totalVotes, explorer, readCfg }: {
+  judge: string; programId: number; totalVotes: number; explorer: string;
+  readCfg: { v5Address: `0x${string}`; chainId: number };
+}) {
+  const { t } = useI18n();
+  const { data: remaining } = useReadContract({
+    address: readCfg.v5Address,
+    abi: GRANTFLOW_V5_ABI,
+    functionName: 'votesRemaining' as const,
+    args: [BigInt(programId), judge as `0x${string}`],
+    chainId: readCfg.chainId,
+  });
+  const used = remaining !== undefined && remaining !== null ? totalVotes - Number(remaining) : null;
+  return (
+    <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs"
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+      <span className="font-mono truncate flex-1 mr-2" style={{ color: 'var(--text)' }}>{judge}</span>
+      <span className="flex items-center gap-2 flex-shrink-0">
+        {used !== null && (
+          <span style={{ color: 'var(--text-muted)' }}>
+            {used}/{totalVotes} {t('program.votes')}
+          </span>
+        )}
+        <a href={`${explorer}/address/${judge}`} target="_blank" rel="noreferrer"
+          style={{ color: 'var(--text-muted)' }}>
+          <ExternalLink size={11} />
+        </a>
+      </span>
+    </div>
+  );
+}
 
 function StatCell({ label, value }: { label: string; value: string }) {
   return (

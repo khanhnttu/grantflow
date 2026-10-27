@@ -181,7 +181,7 @@ function V4MySubmissions({ account, onSelect }: { account: string; onSelect: (id
     const prevPending = pending ?? 0n;
     await sendWithRecovery(
       () => claim(),
-      makeClaimPoller(appClient, config.v4Address, account, prevPending),
+      makeClaimPoller(appClient, config.v4Address, account as `0x${string}`, prevPending),
       {
         setStatus: m => { if (m) setTxOk(m); },
         setError:  m => setTxErr(m),
@@ -244,7 +244,7 @@ function V4ProgramRow({ pid, account, explorer, onSelect, programs, onMatch }:
   const progResult = programs?.[pid];
   const progOk = !!(progResult && progResult.status === 'success' && progResult.result);
   const [pname = '', , , , , subDl = 0n, judDl = 0n, , , , finalized = false, cancelled = false] =
-    progOk ? (progResult.result as [string, string, string, readonly bigint[], bigint, bigint, bigint, bigint, bigint, unknown, boolean, boolean]) : [];
+    progOk ? (progResult.result as unknown as [string, string, string, readonly bigint[], bigint, bigint, bigint, bigint, bigint, unknown, boolean, boolean]) : [];
   const phase = computePhase(subDl, judDl, finalized, cancelled);
 
   const mySubmissions: MySub[] = [];

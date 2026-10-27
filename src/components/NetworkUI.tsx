@@ -135,8 +135,8 @@ export function NetworkDropdown() {
 
         {/* Block */}
         {block !== null && (
-          <span className="opacity-60 font-mono text-[10px] ml-0.5" aria-label={`Block ${block.toString()}`}>
-            #{block.toString()}
+          <span className="block-num opacity-60 font-mono text-[10px] ml-0.5" aria-label={`Block ${block.toString()}`}>
+            block {block.toString()}
           </span>
         )}
 
@@ -224,7 +224,7 @@ export function WrongNetworkBanner() {
 
   return (
     <div
-      className="w-full flex flex-col gap-2 px-4 py-2.5 text-sm"
+      className="wrong-net-banner w-full flex flex-col gap-2 px-4 py-2.5 text-sm"
       style={{
         background: 'rgba(245,158,11,0.12)',
         borderBottom: '1px solid rgba(245,158,11,0.30)',
@@ -249,7 +249,7 @@ export function WrongNetworkBanner() {
           <button
             onClick={() => void handleSwitch()}
             disabled={switching}
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-opacity disabled:opacity-60 focus-visible:outline-2"
+            className="switch-btn rounded-lg px-3 py-1.5 text-xs font-semibold transition-opacity disabled:opacity-60 focus-visible:outline-2"
             style={{ background: '#d97706', color: '#fff' }}
             aria-label={`${t('banner.switchTo')} ${appChainLabel}`}
           >

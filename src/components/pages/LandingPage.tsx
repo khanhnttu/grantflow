@@ -5,11 +5,19 @@ import {
 } from 'lucide-react';
 import { LogoMark } from '@/components/BrandLogo';
 import { TokenUSDC } from '@web3icons/react';
-import { GRANTFLOW_V4_ADDRESS, addrUrl, ACTIVE_CHAIN_ID, GRANTFLOW_ADDRESS } from '@/lib/chainConfig';
+import { GRANTFLOW_V4_ADDRESS, addrUrl, ACTIVE_CHAIN_ID, GRANTFLOW_ADDRESS, IS_MAINNET } from '@/lib/chainConfig';
 import { useI18n } from '@/hooks/useI18n';
 import { useReadContracts, usePublicClient } from 'wagmi';
 import { GRANTFLOW_V4_ABI, getV4Address } from '@/lib/grantflowV4';
 import { GRANTFLOW_ABI } from '@/lib/grantflow';
+import { GRANTFLOW_V5_ABI } from '@/hooks/useGrantFlowV5';
+
+// V5 addresses (pinned to mainnet for the security card)
+const V5_MAINNET_ADDR = (import.meta.env.VITE_GRANTFLOW_V5_ADDRESS_MAINNET || '0xe67ec49a6618cc205fab934fc76f8a271cc77c37') as `0x${string}`;
+const V5_ACTIVE_ADDR  = ((IS_MAINNET
+  ? import.meta.env.VITE_GRANTFLOW_V5_ADDRESS_MAINNET
+  : import.meta.env.VITE_GRANTFLOW_V5_ADDRESS) || V5_MAINNET_ADDR) as `0x${string}`;
+
 import type { AppPage } from '@/components/AppShell';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -126,29 +134,65 @@ function useLiveStats(): LiveStats {
   const v4Addr = getV4Address(ACTIVE_CHAIN_ID);
   const client = usePublicClient({ chainId: ACTIVE_CHAIN_ID });
   const [paidOut, setPaidOut] = useState<bigint | null>(null);
+  const [v5Locked, setV5Locked] = useState<bigint | null>(null);
+  const [v5Count, setV5Count] = useState<number | null>(null);
 
-  // Batch: v4 programCount + v3 programCount + USDC balance of v4 contract
-  // chainId pinned on each entry so the wallet chain is ignored.
+  // Batch: v4 programCount + v3 programCount
   const { data } = useReadContracts({
     contracts: [
       { address: v4Addr, abi: GRANTFLOW_V4_ABI, functionName: 'programCount' as const, chainId: ACTIVE_CHAIN_ID },
       { address: GRANTFLOW_ADDRESS, abi: GRANTFLOW_ABI, functionName: 'programCount' as const, chainId: ACTIVE_CHAIN_ID },
-      {
-        address: '0x3600000000000000000000000000000000000000',
-        abi: [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }] as const,
-        functionName: 'balanceOf',
-        args: [v4Addr],
-        chainId: ACTIVE_CHAIN_ID,
-      },
     ],
   });
 
-  const v4Count   = data?.[0]?.status === 'success' ? Number(data[0].result) : null;
-  const v3Count   = data?.[1]?.status === 'success' ? Number(data[1].result) : null;
-  const locked    = data?.[2]?.status === 'success' ? (data[2].result) : null;
-  const total     = v4Count !== null && v3Count !== null ? v4Count + v3Count : null;
+  const v4Count = data?.[0]?.status === 'success' ? Number(data[0].result) : null;
+  const v3Count = data?.[1]?.status === 'success' ? Number(data[1].result) : null;
+  const total   = v4Count !== null && v3Count !== null && v5Count !== null
+    ? v4Count + v3Count + v5Count : null;
 
-  // Aggregate Claimed events for total paid out (both v3 + v4)
+  // Read V5 programCount + all programs to compute locked = sum(active totalDeposited)
+  useEffect(() => {
+    if (!client) return;
+    let cancelled = false;
+
+    async function loadV5() {
+      if (cancelled || !client) return;
+      // Get V5 program count
+      const countResult = await client.readContract({
+        address: V5_ACTIVE_ADDR,
+        abi: GRANTFLOW_V5_ABI,
+        functionName: 'programCount',
+      }).catch(() => null);
+      if (cancelled || countResult === null) return;
+      const cnt = Number(countResult);
+      if (!cancelled) setV5Count(cnt);
+      if (cnt === 0) { if (!cancelled) setV5Locked(0n); return; }
+
+      // Read all programs to compute locked (non-cancelled, non-finalized)
+      const calls = Array.from({ length: cnt }, (_, i) =>
+        client.readContract({
+          address: V5_ACTIVE_ADDR,
+          abi: GRANTFLOW_V5_ABI,
+          functionName: 'getProgram',
+          args: [BigInt(i)],
+        }).catch(() => null)
+      );
+      const results = await Promise.all(calls);
+      if (cancelled) return;
+      let locked = 0n;
+      for (const r of results) {
+        if (!r) continue;
+        const prog = r as unknown as { finalized: boolean; cancelled: boolean; totalDeposited: bigint };
+        if (!prog.cancelled && !prog.finalized) locked += prog.totalDeposited ?? 0n;
+      }
+      if (!cancelled) setV5Locked(locked);
+    }
+
+    void loadV5();
+    return () => { cancelled = true; };
+  }, [client]);
+
+  // Aggregate PrizeAssigned events for V5 paid out + Claimed for V4
   useEffect(() => {
     if (!client) return;
     let cancelled = false;
@@ -161,22 +205,33 @@ function useLiveStats(): LiveStats {
         { indexed: false as const, name: 'amount', type: 'uint256' as const },
       ],
     };
+    const PRIZE_ASSIGNED = {
+      type: 'event' as const,
+      name: 'PrizeAssigned',
+      inputs: [
+        { indexed: true as const, name: 'programId', type: 'uint256' as const },
+        { indexed: true as const, name: 'submissionId', type: 'uint256' as const },
+        { indexed: true as const, name: 'winner', type: 'address' as const },
+        { indexed: false as const, name: 'amount', type: 'uint256' as const },
+        { indexed: false as const, name: 'rank', type: 'uint256' as const },
+      ],
+    };
 
     void Promise.all([
       client.getLogs({ address: v4Addr, event: CLAIMED_V4, fromBlock: 'earliest', toBlock: 'latest' }).catch(() => []),
-    ]).then(([v4Logs]) => {
+      client.getLogs({ address: V5_ACTIVE_ADDR, event: PRIZE_ASSIGNED, fromBlock: 'earliest', toBlock: 'latest' }).catch(() => []),
+    ]).then(([v4Logs, v5Logs]) => {
       if (cancelled) return;
       let sum = 0n;
-      for (const l of v4Logs) {
-        const a = (l.args as { amount?: bigint }).amount ?? 0n;
-        sum += a;
-      }
+      for (const l of v4Logs) sum += (l.args as { amount?: bigint }).amount ?? 0n;
+      for (const l of v5Logs) sum += (l.args as { amount?: bigint }).amount ?? 0n;
       setPaidOut(sum);
     });
 
     return () => { cancelled = true; };
   }, [client, v4Addr]);
 
+  const locked = v5Locked !== null ? v5Locked : null;
   return { totalPrograms: total, usdcLocked: locked, usdcPaidOut: paidOut };
 }
 
@@ -230,7 +285,7 @@ function LandingNav({
 
   return (
     <nav
-      className="sticky top-0 z-40 w-full"
+      className="sticky top-0 z-30 w-full"
       style={{
         background: 'var(--topbar-bg)',
         borderBottom: '1px solid var(--topbar-border)',
@@ -617,10 +672,10 @@ export function LandingPage({ onNav }: { onNav: (page: string) => void }) {
             </div>
             <div className="rounded-2xl p-4 space-y-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <p className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>{t('landing.security.contract.label')}</p>
-              <code className="text-xs font-mono break-all" style={{ color: 'var(--ink-2)' }}>{GRANTFLOW_V4_ADDRESS}</code>
+              <code className="text-xs font-mono break-all" style={{ color: 'var(--ink-2)' }}>{V5_MAINNET_ADDR}</code>
               <div className="flex items-center gap-2 pt-1 flex-wrap">
                 <a
-                  href={addrUrl(GRANTFLOW_V4_ADDRESS)}
+                  href={`https://explorer.arc.io/address/${V5_MAINNET_ADDR}`}
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-1"
@@ -629,7 +684,7 @@ export function LandingPage({ onNav }: { onNav: (page: string) => void }) {
                   <ExternalLink className="size-3" />{t('landing.security.explorer')}
                 </a>
                 <a
-                  href="https://github.com/khanhnttu/grantflow"
+                  href="https://github.com/khanhnttu/grantflow/blob/main/contracts/GrantFlowV5.sol"
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-1 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-1"
@@ -637,7 +692,7 @@ export function LandingPage({ onNav }: { onNav: (page: string) => void }) {
                 >
                   <Github className="size-3" />{t('landing.security.source')}
                 </a>
-                <CopyButton text={GRANTFLOW_V4_ADDRESS} copyLabel={t('landing.security.copy')} copiedLabel={t('landing.security.copied')} />
+                <CopyButton text={V5_MAINNET_ADDR} copyLabel={t('landing.security.copy')} copiedLabel={t('landing.security.copied')} />
               </div>
             </div>
           </div>

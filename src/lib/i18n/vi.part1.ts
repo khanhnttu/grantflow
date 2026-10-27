@@ -58,7 +58,7 @@ export const VI_1 = {
   'landing.uc.bounty.body':        'Không cần triển khai hợp đồng — phù hợp cho thiết kế, nội dung, giới thiệu, và mọi công việc mà kết quả nằm ngoài chuỗi.',
   'landing.uc.contest.cat':        'Contest',
   'landing.uc.contest.headline':   'Cuộc thi',
-  'landing.uc.contest.body':       'Giải thưởng được xếp hạng (1st, 2nd, 3rd…) dựa trên phiếu bầu của giám khảo. Giải chưa trao sẽ hoàn về nhà tài trợ sau khi finalize.',
+  'landing.uc.contest.body':       'Giải thưởng xếp hạng (hạng nhất, nhì, ba…) do giám khảo bình chọn. Giải chưa trao sẽ hoàn về nhà tài trợ sau khi kết thúc.',
   'landing.uc.referral.cat':       'Referral',
   'landing.uc.referral.headline':  'Thưởng giới thiệu',
   'landing.uc.referral.body':      'Trả một khoản USDC cố định cho mỗi lượt giới thiệu hợp lệ. Giám khảo xác minh từng bài nộp. Mỗi địa chỉ ví chỉ nhận thưởng một lần.',
