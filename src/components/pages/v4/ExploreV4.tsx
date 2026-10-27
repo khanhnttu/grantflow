@@ -50,6 +50,7 @@ interface ProgramRow {
   prizes: readonly bigint[]; pool: bigint; deposited: bigint;
   subDl: bigint; judDl: bigint; pType: number; pCat: number;
   phase: PhaseValue; finalized: boolean; cancelled: boolean;
+  version: 'v4' | 'v5';
 }
 
 export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
@@ -58,6 +59,7 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
   const [grid, setGrid]   = useState(false);
   const [page, setPage]   = useState(1);
   const [sort, setSort]   = useState<SortKey>('newest');
+  const [v5Rows, setV5Rows] = useState<ProgramRow[]>([]);
 
   const { t } = useI18n();
   const { config } = useNetworkStore();
@@ -69,7 +71,7 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
   const isLoading = countLoading || progsLoading;
   const isError   = countError   || progsError;
 
-  const rows = useMemo<ProgramRow[]>(() => {
+  const v4Rows = useMemo<ProgramRow[]>(() => {
     if (!programs) return [];
     const result: ProgramRow[] = [];
     for (let i = 0; i < programs.length; i++) {
@@ -78,10 +80,13 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
       const [name, desc, sponsor, prizes, deposited, subDl, judDl, pType, pCat, , finalized, cancelled] = r.result;
       const phase = computePhase(subDl, judDl, finalized, cancelled);
       const pool  = totalPool(prizes);
-      result.push({ id: i, name, desc, sponsor, prizes, pool, deposited, subDl, judDl, pType: Number(pType), pCat: Number(pCat), phase, finalized, cancelled });
+      result.push({ id: i, name, desc, sponsor, prizes, pool, deposited, subDl, judDl, pType: Number(pType), pCat: Number(pCat), phase, finalized, cancelled, version: 'v4' });
     }
     return result;
   }, [programs]);
+
+  // Merge V4 (newest first = reversed) with V5 rows (already reversed in loader)
+  const rows = useMemo<ProgramRow[]>(() => [...v5Rows, ...v4Rows], [v5Rows, v4Rows]);
 
   // filter
   const filtered = useMemo(() => rows.filter(r => {
@@ -112,8 +117,9 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* V5 programs section — shown when V5 contract is deployed */}
-      <V5ProgramsSection search={search} onSelectV5={onSelectV5 ?? onSelect} />
+      {/* V5 programs section — shown when V5 contract is deployed.
+          Cards remain above; also feeds V5 rows into the unified table below. */}
+      <V5ProgramsSection search={search} onSelectV5={onSelectV5 ?? onSelect} onRows={setV5Rows} />
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -223,22 +229,31 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
             <tbody>
               {pageItems.map((r, i) => (
                 <tr
-                  key={r.id}
-                  onClick={() => onSelect(r.id)}
-                  onKeyDown={e => e.key === 'Enter' && onSelect(r.id)}
+                  key={`${r.version}-${r.id}`}
+                  onClick={() => r.version === 'v5' ? (onSelectV5 ?? onSelect)(r.id) : onSelect(r.id)}
+                  onKeyDown={e => e.key === 'Enter' && (r.version === 'v5' ? (onSelectV5 ?? onSelect)(r.id) : onSelect(r.id))}
                   className="cursor-pointer transition-colors hover:bg-white/5 focus-visible:outline-2"
                   tabIndex={0}
                   role="row"
                   aria-label={`Open program: ${r.name}`}
                   style={{ borderBottom: i < pageItems.length - 1 ? '1px solid var(--border)' : undefined }}
                 >
-                  <td className="px-3 py-2.5 font-medium max-w-[140px] truncate">{r.name}</td>
+                  <td className="px-3 py-2.5 font-medium max-w-[160px]">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="truncate">{r.name}</span>
+                      <span className="text-[9px] font-semibold px-1 py-0.5 rounded uppercase tracking-wider flex-shrink-0"
+                        style={r.version === 'v5'
+                          ? { background: 'rgba(79,158,248,0.14)', color: '#4f9ef8' }
+                          : { background: 'rgba(180,120,0,0.10)', color: '#b47800' }
+                        }>{r.version}</span>
+                    </div>
+                  </td>
                   <td className="px-3 py-2.5">{PROGRAM_TYPE_LABELS[r.pType as 0 | 1]}</td>
                   <td className="px-3 py-2.5">{CATEGORY_LABELS[r.pCat as 0|1|2|3]}</td>
                   <td className="px-3 py-2.5 tabular-nums">{usdcToDisplay(r.pool)} USDC</td>
                   <td className="px-3 py-2.5">{r.prizes.length} rank{r.prizes.length !== 1 ? 's' : ''}</td>
-                  <td className="px-3 py-2.5">{countdownLabel(r.subDl)}</td>
-                  <td className="px-3 py-2.5">{countdownLabel(r.judDl)}</td>
+                  <td className="px-3 py-2.5">{r.cancelled ? '–' : countdownLabel(r.subDl)}</td>
+                  <td className="px-3 py-2.5">{r.cancelled ? '–' : countdownLabel(r.judDl)}</td>
                   <td className="px-3 py-2.5">
                     <a href={`${explorer}/address/${r.sponsor}`} target="_blank" rel="noreferrer"
                       onClick={e => e.stopPropagation()}
@@ -328,6 +343,7 @@ interface RowType {
   id: number; name: string; prizes: readonly bigint[];
   pool: bigint; subDl: bigint; judDl: bigint;
   pType: number; pCat: number; phase: PhaseValue; sponsor: string;
+  cancelled: boolean;
 }
 
 function GridCard({ row, explorer, onSelect }: { row: RowType; explorer: string; onSelect: (id: number) => void }) {
@@ -353,7 +369,7 @@ function GridCard({ row, explorer, onSelect }: { row: RowType; explorer: string;
         <span aria-hidden>·</span>
         <span>{CATEGORY_LABELS[row.pCat as 0|1|2|3]}</span>
         <span aria-hidden>·</span>
-        <span>Sub: {countdownLabel(row.subDl)}</span>
+        <span>Sub: {row.cancelled ? '–' : countdownLabel(row.subDl)}</span>
       </div>
       <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
         <a href={`${explorer}/address/${row.sponsor}`} target="_blank" rel="noreferrer"
@@ -487,14 +503,14 @@ interface V5ProgCard {
   cancelled: boolean;
 }
 
-function V5ProgramsSection({ search, onSelectV5 }: { search: string; onSelectV5: (id: number) => void }) {
+function V5ProgramsSection({ search, onSelectV5, onRows }: { search: string; onSelectV5: (id: number) => void; onRows?: (rows: ProgramRow[]) => void }) {
   const { config, appClient } = useNetworkStore();
   const { count } = useV5ProgramCount();
   const [cards, setCards] = useState<V5ProgCard[]>([]);
   const [loadingV5, setLoadingV5] = useState(false);
 
   const loadV5 = useCallback(async () => {
-    if (!config.v5Address || count === 0) { setCards([]); return; }
+    if (!config.v5Address || count === 0) { setCards([]); onRows?.([]); return; }
     if (count === undefined) return; // still loading count
     setLoadingV5(true);
     try {
@@ -509,9 +525,10 @@ function V5ProgramsSection({ search, onSelectV5 }: { search: string; onSelectV5:
         )
       );
       const parsed: V5ProgCard[] = [];
+      const tableRows: ProgramRow[] = [];
       results.forEach((r, i) => {
         if (!r) return;
-        const [name, description, , prizes, totalDeposited, subDl, judDl, , , , finalized, cancelled] =
+        const [name, description, sponsor, prizes, totalDeposited, subDl, judDl, pType, pCat, , finalized, cancelled] =
           r as readonly [string, string, `0x${string}`, readonly bigint[], bigint, bigint, bigint, number, number, boolean, boolean, boolean];
         const meta = parseSponsorMeta(description);
         const phase = computePhase(subDl, judDl, finalized, cancelled);
@@ -526,8 +543,18 @@ function V5ProgramsSection({ search, onSelectV5 }: { search: string; onSelectV5:
           finalized,
           cancelled,
         });
+        tableRows.push({
+          id: i, name, desc: description, sponsor,
+          prizes: prizes,
+          pool: totalDeposited,
+          deposited: totalDeposited,
+          subDl, judDl,
+          pType: Number(pType), pCat: Number(pCat),
+          phase, finalized, cancelled, version: 'v5',
+        });
       });
-      setCards(parsed.reverse()); // newest first
+      setCards(parsed.reverse()); // newest first (cards only)
+      onRows?.(tableRows.slice().reverse()); // newest first for table
     } finally {
       setLoadingV5(false);
     }

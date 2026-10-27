@@ -379,6 +379,23 @@ export const VI_4 = {
   // ── Team submissions ─────────────────────────────────────────────
   'team.solo':              'Cá nhân',
   'team.team':              'Nhóm',
+  // ── Phase labels ─────────────────────────────────────────────────
+  'phase.judgingEnded':     'Chấm giải đã kết thúc — đang chờ hoàn tất',
+
+  // ── Wrong-network banner ─────────────────────────────────────────
+  'banner.walletOn':        'Ví đang ở',
+  'banner.appExpects':      '— ứng dụng yêu cầu',
+  'banner.txDisabled':      'Các nút giao dịch bị tắt.',
+  'banner.switchTo':        'Chuyển sang',
+  'banner.switching':       'Đang chuyển…',
+  'banner.switchFailed':    'Chuyển thất bại — hãy thêm mạng thủ công (xem gợi ý bên dưới).',
+  'banner.hintTitle':       'Gợi ý:',
+  'banner.hintBody':        'Ví của bạn đã có mạng tên "$name" nhưng báo chain ID $got thay vì $want. Trong MetaMask: Cài đặt → Mạng → $name → đổi Chain ID thành $want và RPC thành $rpc, hoặc xóa mục đó rồi nhấn "Chuyển sang $name" ở trên để thêm lại đúng.',
+
+  // ── Judge page ───────────────────────────────────────────────────
+  'judge.sub':              'Các chương trình mà ví của bạn được chỉ định làm giám khảo.',
+  'judge.empty':            'Ví của bạn chưa là giám khảo của chương trình nào.',
+
   'team.unnamed':           'Nhóm chưa đặt tên',
   'team.namePh':            'Tên nhóm (không bắt buộc)',
   'team.leaderNote':        'Bạn là trưởng nhóm:',

@@ -15,6 +15,7 @@ import { usePublicClient } from 'wagmi';
 import { useNetworkStore } from '@/hooks/useNetworkStore';
 import type { NetworkChoice } from '@/hooks/useNetworkStore';
 import { useWrongNetwork } from '@/hooks/useWrongNetwork';
+import { useI18n } from '@/hooks/useI18n';
 
 // ── WrongNetwork context (so tx buttons can read disableTx) ──────────────────
 
@@ -200,6 +201,7 @@ export function WrongNetworkBanner() {
     appChainLabel, appChainId,
     isMisconfigured, switchNetwork,
   } = useWrongNetwork();
+  const { t } = useI18n();
   const [switching, setSwitching] = useState(false);
   const [err, setErr]             = useState('');
 
@@ -207,11 +209,18 @@ export function WrongNetworkBanner() {
     setSwitching(true);
     setErr('');
     const ok = await switchNetwork();
-    if (!ok) setErr('Switch failed — add the network manually (see hint below).');
+    if (!ok) setErr(t('banner.switchFailed'));
     setSwitching(false);
-  }, [switchNetwork]);
+  }, [switchNetwork, t]);
 
   if (!isWrong) return null;
+
+  const rpcUrl = appChainId === 5042 ? 'https://rpc.mainnet.arc.io' : 'https://rpc.testnet.arc.io';
+  const hintBody = t('banner.hintBody')
+    .replace(/\$name/g, appChainLabel)
+    .replace(/\$got/g,  String(walletChainId))
+    .replace(/\$want/g, String(appChainId))
+    .replace(/\$rpc/g,  rpcUrl);
 
   return (
     <div
@@ -227,13 +236,13 @@ export function WrongNetworkBanner() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2 font-medium">
           <AlertTriangle size={15} style={{ color: '#d97706', flexShrink: 0 }} aria-hidden />
-          Wallet is on{' '}
+          {t('banner.walletOn')}{' '}
           <strong className="mx-0.5">
             {walletChainLabel}{walletChainId !== undefined ? ` (chain ${walletChainId})` : ''}
           </strong>
-          — app expects{' '}
-          <strong className="mx-0.5">{appChainLabel} (chain {appChainId})</strong>.
-          Tx buttons disabled.
+          {t('banner.appExpects')}{' '}
+          <strong className="mx-0.5">{appChainLabel} (chain {appChainId})</strong>.{' '}
+          {t('banner.txDisabled')}
         </span>
         <div className="flex items-center gap-3">
           {err && <span className="text-xs text-red-600">{err}</span>}
@@ -242,20 +251,16 @@ export function WrongNetworkBanner() {
             disabled={switching}
             className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-opacity disabled:opacity-60 focus-visible:outline-2"
             style={{ background: '#d97706', color: '#fff' }}
-            aria-label={`Switch wallet to ${appChainLabel}`}
+            aria-label={`${t('banner.switchTo')} ${appChainLabel}`}
           >
-            {switching ? 'Switching…' : `Switch to ${appChainLabel}`}
+            {switching ? t('banner.switching') : `${t('banner.switchTo')} ${appChainLabel}`}
           </button>
         </div>
       </div>
       {/* Misconfigured-wallet hint: wallet shows the right name but wrong chainId */}
       {isMisconfigured && (
         <p className="text-xs" style={{ color: '#92400e' }}>
-          <strong>Hint:</strong> Your wallet already has a network named
-          &ldquo;{appChainLabel}&rdquo; but it reports chain ID {walletChainId} instead of {appChainId}.
-          In MetaMask: Settings → Networks → {appChainLabel} → change Chain ID to {appChainId} and RPC to{' '}
-          <code className="font-mono">{appChainId === 5042 ? 'https://rpc.mainnet.arc.io' : 'https://rpc.testnet.arc.io'}</code>,
-          or delete that entry and click &ldquo;Switch to {appChainLabel}&rdquo; above to add the correct one.
+          <strong>{t('banner.hintTitle')}</strong>{' '}{hintBody}
         </p>
       )}
     </div>

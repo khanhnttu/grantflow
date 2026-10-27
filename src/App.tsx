@@ -21,6 +21,8 @@ import { ProgramDetailV4 } from '@/components/pages/v4/ProgramDetailV4';
 import { ProgramDetailV5 } from '@/components/pages/v5/ProgramDetailV5';
 import { CreateProgramV4 } from '@/components/pages/v4/CreateProgramV4';
 import { MySubmissionsV4 } from '@/components/pages/v4/MySubmissionsV4';
+import { MySubmissionsPage } from '@/components/pages/MySubmissionsPage';
+import { JudgeProgramsPage } from '@/components/pages/JudgeProgramsPage';
 import { MyProgramsV4 } from '@/components/pages/v4/MyProgramsV4';
 import { HowItWorksPage } from '@/components/pages/HowItWorksPage';
 import { ComparePage } from '@/components/pages/ComparePage';
@@ -121,6 +123,7 @@ function parseRoute(): RouteState {
     'explore', 'sponsor', 'builder', 'reviewer', 'about', 'docs', 'terms', 'deploy', 'landing',
     'v4-explore', 'v4-create', 'v4-submissions', 'v4-my-programs',
     'v5-explore', 'v5-create', 'v5-program',
+    'my-submissions', 'judge-programs',
     'how-it-works', 'compare', 'developers', 'built-vs-planned',
   ];
   return valid.includes(hash as AppPage)
@@ -228,6 +231,10 @@ function AppInner() {
         return <CreateProgramV4 onDone={() => navigate('v4-explore')} />;
       case 'v4-submissions':
         return <MySubmissionsV4 onSelect={id => navigate('v4-program', id)} />;
+      case 'my-submissions':
+        return <MySubmissionsPage onSelectV4={id => navigate('v4-program', id)} onSelectV5={id => navigate('v5-program', id)} />;
+      case 'judge-programs':
+        return <JudgeProgramsPage onSelectV4={id => navigate('v4-program', id)} onSelectV5={id => navigate('v5-program', id)} />;
       case 'v4-my-programs':
         return <MyProgramsV4 onSelect={id => navigate('v4-program', id)} onCreateNew={() => navigate('v4-create')} />;
 

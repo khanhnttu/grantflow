@@ -763,6 +763,23 @@ export const EN = {
   'program.cancelBtn':      'Cancel program',
   'program.alreadySubmitted': 'You already submitted to this program.',
 
+  // ── Phase labels ─────────────────────────────────────────────────
+  'phase.judgingEnded':     'Judging ended — awaiting finalize',
+
+  // ── Wrong-network banner ─────────────────────────────────────────
+  'banner.walletOn':        'Wallet is on',
+  'banner.appExpects':      '— app expects',
+  'banner.txDisabled':      'Tx buttons disabled.',
+  'banner.switchTo':        'Switch to',
+  'banner.switching':       'Switching…',
+  'banner.switchFailed':    'Switch failed — add the network manually (see hint below).',
+  'banner.hintTitle':       'Hint:',
+  'banner.hintBody':        'Your wallet already has a network named "$name" but it reports chain ID $got instead of $want. In MetaMask: Settings → Networks → $name → change Chain ID to $want and RPC to $rpc, or delete that entry and click "Switch to $name" above to add the correct one.',
+
+  // ── Judge page ───────────────────────────────────────────────────
+  'judge.sub':              'Programs where your wallet is assigned as a judge.',
+  'judge.empty':            'Your wallet is not a judge on any program.',
+
   // ── Team submissions ─────────────────────────────────────────────
   'team.solo':              'Solo',
   'team.team':              'Team',

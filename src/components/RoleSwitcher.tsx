@@ -42,8 +42,13 @@ const ROLES: { id: Role; label: string; Icon: typeof Code2 }[] = [
   { id: 'judge',     label: 'Judge',     Icon: Scale     },
 ];
 
-export function RoleSwitcher() {
+export function RoleSwitcher({ onSwitch }: { onSwitch?: (r: Role) => void } = {}) {
   const { role, setRole } = useRole();
+
+  const handleClick = (id: Role) => {
+    setRole(id);
+    onSwitch?.(id);
+  };
 
   return (
     <div
@@ -55,7 +60,7 @@ export function RoleSwitcher() {
         return (
           <button
             key={id}
-            onClick={() => setRole(id)}
+            onClick={() => handleClick(id)}
             className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
             style={active
               ? { background: 'var(--accent)', color: '#fff' }

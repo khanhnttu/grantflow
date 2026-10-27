@@ -22,6 +22,7 @@ export type AppPage =
   | 'program' | 'about' | 'docs' | 'terms' | 'deploy'
   | 'v4-explore' | 'v4-program' | 'v4-create' | 'v4-submissions' | 'v4-my-programs'
   | 'v5-explore' | 'v5-program' | 'v5-create'
+  | 'judge-programs' | 'my-submissions'
   | 'how-it-works' | 'compare' | 'developers' | 'built-vs-planned';
 
 export type ThemeMode = 'light' | 'dark';
@@ -43,9 +44,9 @@ const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 
 // ── Role-aware primary nav (sidebar) ─────────────────────────────────────────
 const NAV_HACKER = [
-  { id: 'v4-explore'     as AppPage, label: 'nav.explore',     icon: Compass    },
-  { id: 'v4-submissions' as AppPage, label: 'nav.submissions', icon: Code2      },
-  { id: 'docs'           as AppPage, label: 'nav.docs',        icon: BookOpen   },
+  { id: 'v4-explore'    as AppPage, label: 'nav.explore',     icon: Compass    },
+  { id: 'my-submissions'as AppPage, label: 'nav.submissions', icon: Code2      },
+  { id: 'docs'          as AppPage, label: 'nav.docs',        icon: BookOpen   },
 ];
 const NAV_ORGANIZER = [
   { id: 'v4-explore'     as AppPage, label: 'nav.explore',     icon: Compass     },
@@ -54,9 +55,16 @@ const NAV_ORGANIZER = [
   { id: 'docs'           as AppPage, label: 'nav.docs',        icon: BookOpen    },
 ];
 const NAV_JUDGE = [
-  { id: 'v4-explore'   as AppPage, label: 'nav.judge', icon: Scale    },
-  { id: 'docs'         as AppPage, label: 'nav.docs',  icon: BookOpen },
+  { id: 'judge-programs' as AppPage, label: 'nav.judge', icon: Scale    },
+  { id: 'docs'           as AppPage, label: 'nav.docs',  icon: BookOpen },
 ];
+
+/** Default page to navigate to when switching to a role. */
+export const ROLE_DEFAULT_PAGE: Record<import('@/components/RoleSwitcher').Role, AppPage> = {
+  hacker:    'v4-explore',
+  organizer: 'v4-explore',
+  judge:     'judge-programs',
+};
 
 // ── Guide links (topbar More menu) ───────────────────────────────────────────
 const GUIDE_NAV = [
@@ -443,8 +451,8 @@ function TopBar({
       )}
 
       <div className="flex items-center gap-2 ml-auto" role="toolbar" aria-label="Header actions">
-        {/* Role switcher (app pages only) */}
-        {!bare && <RoleSwitcher />}
+        {/* Role switcher (app pages only) — navigate to role default on switch */}
+        {!bare && <RoleSwitcher onSwitch={r => onNav(ROLE_DEFAULT_PAGE[r])} />}
 
         {/* Network dropdown (replaces static TrustPill) */}
         <NetworkDropdown />

@@ -383,17 +383,40 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
         </div>
 
         {/* Countdown / phase banner */}
-        {!prog.finalized && !prog.cancelled && (
-          <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs"
-            style={{ background: phaseColor + '15', border: `1px solid ${phaseColor}44` }}>
-            <span style={{ color: phaseColor, fontWeight: 600 }}>{phaseLabel}</span>
-            <span style={{ color: 'var(--text-muted)' }}>
-              {countdownLabel(
-                phase === Phase.Submission ? BigInt(prog.submissionDeadline) : BigInt(prog.judgingDeadline)
-              )}
-            </span>
-          </div>
-        )}
+        {!prog.finalized && !prog.cancelled && (() => {
+          const isJudgingEnded = phase === Phase.Judging && nowLive >= prog.judgingDeadline;
+          if (isJudgingEnded) {
+            // Judging deadline passed but not yet finalized — show clear awaiting-finalize state
+            return (
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs"
+                style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                <span style={{ color: '#10b981', fontWeight: 600 }}>
+                  {t('phase.judgingEnded')}
+                </span>
+                {canFinalize && (
+                  <button
+                    onClick={() => void handleFinalize()}
+                    disabled={busy || disableTx}
+                    className="px-3 py-1.5 rounded-lg font-medium text-xs disabled:opacity-50 transition-opacity hover:opacity-80"
+                    style={{ background: '#10b981', color: '#fff' }}>
+                    {busy ? '…' : t('results.finalizeCta')}
+                  </button>
+                )}
+              </div>
+            );
+          }
+          return (
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs"
+              style={{ background: phaseColor + '15', border: `1px solid ${phaseColor}44` }}>
+              <span style={{ color: phaseColor, fontWeight: 600 }}>{phaseLabel}</span>
+              <span style={{ color: 'var(--text-muted)' }}>
+                {countdownLabel(
+                  phase === Phase.Submission ? BigInt(prog.submissionDeadline) : BigInt(prog.judgingDeadline)
+                )}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Finalize banner */}
         {canFinalize && (
