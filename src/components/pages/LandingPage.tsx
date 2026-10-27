@@ -165,19 +165,21 @@ function useLiveStats(): LiveStats {
         outputs: [{ name: '', type: 'uint256' }],
       }] as const;
 
-      const v4Mainnet = (IS_MAINNET
-        ? '0x41ffdab65fca60bda9beb455285d29ab753c3d2e'
-        : '0x0754d3359f18be2079c6d3cea29658b464cfe946') as `0x${string}`;
+      // v4Addr is already chain-correct (getV4Address uses ACTIVE_CHAIN_ID at module load)
       const v3Addr = GRANTFLOW_ADDRESS;
 
       const [balV3, balV4, balV5] = await Promise.all([
         client.readContract({ address: USDC_ADDRESS, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [v3Addr] }).catch(() => 0n),
-        client.readContract({ address: USDC_ADDRESS, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [v4Mainnet] }).catch(() => 0n),
+        client.readContract({ address: USDC_ADDRESS, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [v4Addr] }).catch(() => 0n),
         client.readContract({ address: USDC_ADDRESS, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [V5_ACTIVE_ADDR] }).catch(() => 0n),
       ]);
       if (cancelled) return;
 
-      const locked = (balV3 ?? 0n) + (balV4 ?? 0n) + (balV5 ?? 0n);
+      // Sanity guard: USDC has 6 decimals; clamp any single value > 10M USDC
+      // (catches 18-decimal native reads or wrong-chain balances)
+      const MAX_SANE = 10_000_000n * 1_000_000n; // 10M USDC in 6-dec raw units
+      const safe = (v: bigint) => (v > 0n && v <= MAX_SANE ? v : 0n);
+      const locked = safe(balV3 ?? 0n) + safe(balV4 ?? 0n) + safe(balV5 ?? 0n);
       if (!cancelled) setStats({ totalPrograms: total, usdcLocked: locked, usdcPaidOut: 0n });
     }
 
