@@ -521,12 +521,15 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
                   placeholder={t('program.submitMetaPh')}
                   value={subMeta} onChange={e => setSubMeta(e.target.value)}
                 />
-                <input
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none font-mono"
-                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
-                  placeholder={`${t('program.submitContractPh')} (${t('common.optional')})`}
-                  value={subContract} onChange={e => setSubContract(e.target.value)}
-                />
+                {/* Contract address — only for ONCHAIN_BUILD (programType === 0) */}
+                {prog.programType === 0 && (
+                  <input
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none font-mono"
+                    style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                    placeholder={t('program.submitContractPh')}
+                    value={subContract} onChange={e => setSubContract(e.target.value)}
+                  />
+                )}
 
                 {/* Team fields */}
                 {isTeam && (

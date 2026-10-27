@@ -505,7 +505,8 @@ export function useV5UsdcAllowance(owner: `0x${string}` | undefined) {
 async function sendAndConfirm(
   writeContractAsync: (args: Record<string, unknown>) => Promise<Hash>,
   appClient: PublicClient,
-  request: Record<string, unknown>
+  request: Record<string, unknown>,
+  onHash?: (hash: Hash) => void,
 ): Promise<Hash> {
   let hash: Hash;
   try {
@@ -520,7 +521,12 @@ async function sendAndConfirm(
     }
     throw err;
   }
-  await appClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+  // Set hash immediately so error banner can show a tx link even if the receipt reverts
+  onHash?.(hash);
+  const receipt = await appClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+  if (receipt.status === 'reverted') {
+    throw new Error(`Transaction reverted (tx: ${hash})`);
+  }
   return hash;
 }
 
@@ -565,8 +571,7 @@ export function useV5Write() {
         abi: ERC20_ABI_V5,
         functionName: 'approve',
         args: [config.v5Address, amount],
-      });
-      setTxHash(hash);
+      }, setTxHash);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -585,8 +590,7 @@ export function useV5Write() {
         args: [args.name, args.description, args.prizes,
           args.submissionDeadline, args.judgingDeadline,
           args.judges, args.programType, args.category],
-      });
-      setTxHash(hash);
+      }, setTxHash);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -605,8 +609,7 @@ export function useV5Write() {
         abi: GRANTFLOW_V5_ABI,
         functionName: 'submit',
         args: [BigInt(programId), projectContract, metadataURI, payees, sharesBps],
-      });
-      setTxHash(hash);
+      }, setTxHash);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -619,8 +622,7 @@ export function useV5Write() {
         abi: GRANTFLOW_V5_ABI,
         functionName: 'vote',
         args: [BigInt(programId), BigInt(submissionId)],
-      });
-      setTxHash(hash);
+      }, setTxHash);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -633,8 +635,7 @@ export function useV5Write() {
         abi: GRANTFLOW_V5_ABI,
         functionName: 'finalize',
         args: [BigInt(programId)],
-      });
-      setTxHash(hash);
+      }, setTxHash);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -647,8 +648,7 @@ export function useV5Write() {
         abi: GRANTFLOW_V5_ABI,
         functionName: 'cancel',
         args: [BigInt(programId)],
-      });
-      setTxHash(hash);
+      }, setTxHash);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -665,8 +665,7 @@ export function useV5Write() {
         functionName: 'updateProgram',
         args: [BigInt(args.programId), args.name, args.description,
           args.submissionDeadline, args.judgingDeadline],
-      });
-      setTxHash(hash);
+      }, setTxHash);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -710,6 +709,9 @@ function parseV5Error(err: unknown): string {
   if (msg.includes('invalidparams'))    return 'Invalid parameters. Check deadlines and prize amounts.';
   if (msg.includes('alreadycancelled')) return 'Program is already cancelled.';
   if (msg.includes('already known'))    return 'Transaction already submitted — check your wallet.';
+  if (msg.includes('wrongprogramtype')) return 'Wrong program type: use address(0) for Open Bounty submissions.';
+  if (msg.includes('invalidprojectcontract')) return 'Invalid project contract: must be a deployed contract address.';
+  if (msg.includes('transaction reverted')) return 'Transaction reverted onchain. Check the tx link for details.';
   return 'Transaction failed. Check your wallet and try again.';
 }
 
