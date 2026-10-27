@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { LogoMark } from '@/components/BrandLogo';
 import { TokenUSDC } from '@web3icons/react';
-import { ACTIVE_CHAIN_ID, GRANTFLOW_ADDRESS, IS_MAINNET } from '@/lib/chainConfig';
+import { ACTIVE_CHAIN_ID, GRANTFLOW_ADDRESS, IS_MAINNET, USDC_ADDRESS } from '@/lib/chainConfig';
 import { useI18n } from '@/hooks/useI18n';
 import { usePublicClient } from 'wagmi';
 import { GRANTFLOW_V4_ABI, getV4Address } from '@/lib/grantflowV4';
@@ -155,32 +155,29 @@ function useLiveStats(): LiveStats {
       const v5Count = v5CountRaw !== null ? Number(v5CountRaw) : 0;
       const total   = v4Count + v3Count + v5Count;
 
-      // Emit program count immediately so it shows without waiting for getProgram calls
+      // Emit program count immediately
       if (!cancelled) setStats(s => ({ ...s, totalPrograms: total, usdcPaidOut: s.usdcPaidOut ?? 0n }));
 
-      // Step 2 — read V5 programs to compute locked pool (no getLogs needed)
-      let locked = 0n;
-      if (v5Count > 0) {
-        const progCalls = Array.from({ length: v5Count }, (_, i) =>
-          client.readContract({
-            address: V5_ACTIVE_ADDR,
-            abi: GRANTFLOW_V5_ABI,
-            functionName: 'getProgram',
-            args: [BigInt(i)],
-          }).catch(() => null)
-        );
-        const progs = await Promise.all(progCalls);
-        if (cancelled) return;
-        for (const r of progs) {
-          if (!r) continue;
-          const p = r as unknown as { finalized: boolean; cancelled: boolean; totalDeposited: bigint };
-          if (!p.cancelled && !p.finalized) locked += p.totalDeposited ?? 0n;
-        }
-      }
+      // Step 2 — locked = sum of USDC balances held by each contract (always accurate, no tuple parsing)
+      const ERC20_BALANCE_ABI = [{
+        type: 'function', name: 'balanceOf', stateMutability: 'view',
+        inputs: [{ name: 'account', type: 'address' }],
+        outputs: [{ name: '', type: 'uint256' }],
+      }] as const;
 
-      // Step 3 — compute paidOut from finalized V5 programs' totalDeposited minus leftover
-      // (Simpler: use the USDC balance of the V5 contract to derive locked, then paidOut = total ever deposited - locked)
-      // For simplicity, paidOut = 0 for now (no getLogs — avoids RPC range errors)
+      const v4Mainnet = (IS_MAINNET
+        ? '0x41ffdab65fca60bda9beb455285d29ab753c3d2e'
+        : '0x0754d3359f18be2079c6d3cea29658b464cfe946') as `0x${string}`;
+      const v3Addr = GRANTFLOW_ADDRESS;
+
+      const [balV3, balV4, balV5] = await Promise.all([
+        client.readContract({ address: USDC_ADDRESS, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [v3Addr] }).catch(() => 0n),
+        client.readContract({ address: USDC_ADDRESS, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [v4Mainnet] }).catch(() => 0n),
+        client.readContract({ address: USDC_ADDRESS, abi: ERC20_BALANCE_ABI, functionName: 'balanceOf', args: [V5_ACTIVE_ADDR] }).catch(() => 0n),
+      ]);
+      if (cancelled) return;
+
+      const locked = (balV3 ?? 0n) + (balV4 ?? 0n) + (balV5 ?? 0n);
       if (!cancelled) setStats({ totalPrograms: total, usdcLocked: locked, usdcPaidOut: 0n });
     }
 
