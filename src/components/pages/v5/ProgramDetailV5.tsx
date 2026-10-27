@@ -193,7 +193,13 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
   const phase = computePhase(
     BigInt(prog.submissionDeadline), BigInt(prog.judgingDeadline), prog.finalized, prog.cancelled
   );
-  const phaseLabel = PHASE_LABELS[phase];
+  const PHASE_T: Record<typeof phase, string> = {
+    [Phase.Submission]: t('explore.phaseSubmission'),
+    [Phase.Judging]:    t('explore.phaseJudging'),
+    [Phase.Finalized]:  t('explore.phaseFinalized'),
+    [Phase.Cancelled]:  t('explore.phaseCancelled'),
+  };
+  const phaseLabel = PHASE_T[phase];
   const phaseColor = PHASE_COLORS[phase];
 
   const isSponsor  = !!account && account.toLowerCase() === prog.sponsor.toLowerCase();
@@ -477,8 +483,8 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
               </p>
             )}
             <DetailGrid>
-              <DetailRow label={t('program.type')}     value={PROGRAM_TYPE_LABELS[prog.programType as 0|1]} />
-              <DetailRow label={t('program.category')} value={CATEGORY_LABELS[prog.category as 0|1|2|3]} />
+              <DetailRow label={t('program.type')} value={prog.programType === 0 ? t('explore.typeOnchain') : t('explore.typeOpenBounty')} />
+              <DetailRow label={t('program.category')} value={[t('explore.catHackathon'),t('explore.catBounty'),t('explore.catContest'),t('explore.catReferral')][prog.category] ?? ''} />
               <DetailRow label={t('program.sponsor')}  value={
                 <a href={`${explorer}/address/${prog.sponsor}`} target="_blank" rel="noreferrer"
                   className="inline-flex items-center gap-1 font-mono hover:underline"

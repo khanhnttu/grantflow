@@ -126,7 +126,7 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
         <div>
           <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>{t('explore.title')}</h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            {count} program{count !== 1 ? 's' : ''} · GrantFlowV4 ({t('explore.legacyNote')})
+            {rows.length} {t('explore.subtitle')} · V5+V4
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -221,8 +221,12 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
           <table className="w-full text-xs" style={{ color: 'var(--text)' }} role="grid" aria-label="Programs list">
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
-                {['Program','Type','Category','Pool','Prizes','Sub deadline','Judge deadline','Sponsor','Phase'].map(h => (
-                  <th key={h} className="px-3 py-2.5 text-left font-medium" style={{ color: 'var(--text-muted)' }} scope="col">{h}</th>
+                {([
+                  'explore.col.program','explore.col.type','explore.col.category',
+                  'explore.col.pool','explore.col.prizes','explore.col.subDeadline',
+                  'explore.col.judgeDeadline','explore.col.sponsor','explore.col.phase',
+                ] as const).map(k => (
+                  <th key={k} className="px-3 py-2.5 text-left font-medium" style={{ color: 'var(--text-muted)' }} scope="col">{t(k)}</th>
                 ))}
               </tr>
             </thead>
@@ -248,10 +252,10 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
                         }>{r.version}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5">{PROGRAM_TYPE_LABELS[r.pType as 0 | 1]}</td>
-                  <td className="px-3 py-2.5">{CATEGORY_LABELS[r.pCat as 0|1|2|3]}</td>
+                  <td className="px-3 py-2.5">{r.pType === 0 ? t('explore.typeOnchain') : t('explore.typeOpenBounty')}</td>
+                  <td className="px-3 py-2.5">{[t('explore.catHackathon'),t('explore.catBounty'),t('explore.catContest'),t('explore.catReferral')][r.pCat] ?? ''}</td>
                   <td className="px-3 py-2.5 tabular-nums">{usdcToDisplay(r.pool)} USDC</td>
-                  <td className="px-3 py-2.5">{r.prizes.length} rank{r.prizes.length !== 1 ? 's' : ''}</td>
+                  <td className="px-3 py-2.5">{r.prizes.length} {r.prizes.length !== 1 ? t('explore.ranks') : t('explore.rank')}</td>
                   <td className="px-3 py-2.5">{r.cancelled ? '–' : countdownLabel(r.subDl)}</td>
                   <td className="px-3 py-2.5">{r.cancelled ? '–' : countdownLabel(r.judDl)}</td>
                   <td className="px-3 py-2.5">
@@ -308,17 +312,24 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function PhasePill({ phase }: { phase: PhaseValue }) {
+  const { t } = useI18n();
+  const PHASE_T: Record<PhaseValue, string> = {
+    [Phase.Submission]: t('explore.phaseSubmission'),
+    [Phase.Judging]:    t('explore.phaseJudging'),
+    [Phase.Finalized]:  t('explore.phaseFinalized'),
+    [Phase.Cancelled]:  t('explore.phaseCancelled'),
+  };
   if (phase === Phase.Finalized) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-amber-400 bg-amber-400/10">
-        <Trophy size={9} aria-hidden /> Ended · winners announced
+        <Trophy size={9} aria-hidden /> {t('explore.winnersAnnounced')}
       </span>
     );
   }
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${PHASE_COLORS[phase]}`}>
       <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" aria-hidden />
-      {PHASE_LABELS[phase]}
+      {PHASE_T[phase]}
     </span>
   );
 }
@@ -346,7 +357,8 @@ interface RowType {
   cancelled: boolean;
 }
 
-function GridCard({ row, explorer, onSelect }: { row: RowType; explorer: string; onSelect: (id: number) => void }) {
+function GridCard({ row, explorer, onSelect }: { row: RowType; explorer: string; onSelect: (id: number) => void; }) {
+  const { t } = useI18n();
   return (
     <article
       onClick={() => onSelect(row.id)}
@@ -365,11 +377,11 @@ function GridCard({ row, explorer, onSelect }: { row: RowType; explorer: string;
         {usdcToDisplay(row.pool)} <span className="text-sm font-normal">USDC</span>
       </div>
       <div className="flex flex-wrap gap-2 text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-        <span>{row.prizes.length} prize{row.prizes.length !== 1 ? 's' : ''}</span>
+        <span>{row.prizes.length} {row.prizes.length !== 1 ? t('explore.prizes') : t('explore.prize')}</span>
         <span aria-hidden>·</span>
-        <span>{CATEGORY_LABELS[row.pCat as 0|1|2|3]}</span>
+        <span>{[t('explore.catHackathon'),t('explore.catBounty'),t('explore.catContest'),t('explore.catReferral')][row.pCat] ?? ''}</span>
         <span aria-hidden>·</span>
-        <span>Sub: {row.cancelled ? '–' : countdownLabel(row.subDl)}</span>
+        <span>{t('explore.subPrefix')} {row.cancelled ? '–' : countdownLabel(row.subDl)}</span>
       </div>
       <div className="mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
         <a href={`${explorer}/address/${row.sponsor}`} target="_blank" rel="noreferrer"
@@ -387,6 +399,7 @@ function GridCard({ row, explorer, onSelect }: { row: RowType; explorer: string;
 
 function LegacyV3Section({ explorer }: { explorer: string }) {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
   const { config } = useNetworkStore();
   const v3Address = config.v3Address;
   const chainId   = config.chainId;
@@ -456,7 +469,7 @@ function LegacyV3Section({ explorer }: { explorer: string }) {
                     : { background: 'rgba(34,197,94,0.10)', color: '#16a34a' }
                   }
                 >
-                  {ended ? 'Ended' : 'Open'}
+                  {ended ? t('explore.ended') : t('explore.open')}
                 </span>
                 <a
                   href={`${explorer}/address/${sponsor}`}
@@ -504,6 +517,7 @@ interface V5ProgCard {
 }
 
 function V5ProgramsSection({ search, onSelectV5, onRows }: { search: string; onSelectV5: (id: number) => void; onRows?: (rows: ProgramRow[]) => void }) {
+  const { t } = useI18n();
   const { config, appClient } = useNetworkStore();
   const { count } = useV5ProgramCount();
   const [cards, setCards] = useState<V5ProgCard[]>([]);
@@ -576,7 +590,7 @@ function V5ProgramsSection({ search, onSelectV5, onRows }: { search: string; onS
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Zap size={14} style={{ color: 'var(--accent)' }} />
-        <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>New Programs</span>
+        <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{t('explore.newPrograms')}</span>
         <span className="text-xs px-2 py-0.5 rounded-full font-medium"
           style={{ background: 'var(--accent)', color: '#fff' }}>V5</span>
       </div>
@@ -601,12 +615,12 @@ function V5ProgramsSection({ search, onSelectV5, onRows }: { search: string; onS
       <div className="flex items-center gap-2">
         <Zap size={14} style={{ color: 'var(--accent)' }} />
         <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-          New Programs
+          {t('explore.newPrograms')}
         </span>
         <span className="text-xs px-2 py-0.5 rounded-full font-medium"
           style={{ background: 'var(--accent)', color: '#fff' }}>V5</span>
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          · auto-payout · {count} program{count !== 1 ? 's' : ''}
+          · {t('explore.autoPayout')} · {count} {t('explore.subtitle').split(' ·')[0]}
         </span>
       </div>
 
@@ -649,7 +663,7 @@ function V5ProgramsSection({ search, onSelectV5, onRows }: { search: string; onS
                 {c.pool} <span className="text-xs font-normal">USDC</span>
               </div>
               <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                <span>{c.prizeCount} prize{c.prizeCount !== 1 ? 's' : ''}</span>
+                <span>{c.prizeCount} {c.prizeCount !== 1 ? t('explore.prizes') : t('explore.prize')}</span>
                 <span aria-hidden>·</span>
                 <span>Sub: {new Date(c.subDl * 1000).toLocaleDateString()}</span>
               </div>

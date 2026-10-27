@@ -167,6 +167,7 @@ function V4MySubmissions({ account, onSelect }: { account: string; onSelect: (id
   const [busy, setBusy]   = useState(false);
   const [txErr, setTxErr] = useState('');
   const [txOk, setTxOk]  = useState('');
+  const [matchCount, setMatchCount] = useState(0);
 
   const { data: countRaw } = useProgramCount();
   const count = Number(countRaw ?? 0);
@@ -190,13 +191,20 @@ function V4MySubmissions({ account, onSelect }: { account: string; onSelect: (id
     setBusy(false);
   };
 
+  const hasPending = (pending ?? 0n) > 0n;
+  // Hide section entirely when count is still loading (0) and no pending claim
+  if (count === 0 && !hasPending) return null;
+  // Hide section when programs are loaded but no rows match (matchCount stays 0 after load)
+  // Allow a brief window while programs are loading by checking count > 0
+  if (count > 0 && programs && matchCount === 0 && !hasPending) return null;
+
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
         Legacy V4 Programs
       </h2>
 
-      {(pending ?? 0n) > 0n && (
+      {hasPending && (
         <div className="flex items-center justify-between px-4 py-3 rounded-xl"
           style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)' }}>
           <div>
@@ -218,40 +226,46 @@ function V4MySubmissions({ account, onSelect }: { account: string; onSelect: (id
         </div>
       )}
 
-      {count === 0 ? (
-        <p className="text-xs py-4 text-center" style={{ color: 'var(--text-muted)' }}>{t('mySubs.empty')}</p>
-      ) : (
-        Array.from({ length: count }, (_, pid) => (
-          <V4ProgramRow key={pid} pid={pid} account={account} explorer={explorer} onSelect={onSelect} programs={programs} />
-        ))
-      )}
+      {Array.from({ length: count }, (_, pid) => (
+        <V4ProgramRow key={pid} pid={pid} account={account} explorer={explorer} onSelect={onSelect} programs={programs} onMatch={() => setMatchCount(n => n + 1)} />
+      ))}
     </div>
   );
 }
 
-function V4ProgramRow({ pid, account, explorer, onSelect, programs }:
-  { pid: number; account: string; explorer: string; onSelect: (id: number) => void; programs: ReturnType<typeof useAllProgramsV4>['data'] }) {
+function V4ProgramRow({ pid, account, explorer, onSelect, programs, onMatch }:
+  { pid: number; account: string; explorer: string; onSelect: (id: number) => void; programs: ReturnType<typeof useAllProgramsV4>['data']; onMatch?: () => void }) {
   const { data: subCountRaw } = useSubmissionCountV4(pid);
   const subCount = Number(subCountRaw ?? 0);
   const { data: subs } = useAllSubmissionsV4(pid, subCount);
 
-  const progResult = programs?.[pid];
-  if (!progResult || progResult.status !== 'success' || !progResult.result) return null;
+  interface MySub { id: number; submitter: string; projContract: string; metaURI: string; votes: bigint; prizeAw: bigint; claimed: boolean; }
 
-  const [pname, , , , , subDl, judDl, , , , finalized, cancelled] = progResult.result;
+  const progResult = programs?.[pid];
+  const progOk = !!(progResult && progResult.status === 'success' && progResult.result);
+  const [pname = '', , , , , subDl = 0n, judDl = 0n, , , , finalized = false, cancelled = false] =
+    progOk ? (progResult.result as [string, string, string, readonly bigint[], bigint, bigint, bigint, bigint, bigint, unknown, boolean, boolean]) : [];
   const phase = computePhase(subDl, judDl, finalized, cancelled);
 
-  interface MySub { id: number; submitter: string; projContract: string; metaURI: string; votes: bigint; prizeAw: bigint; claimed: boolean; }
   const mySubmissions: MySub[] = [];
-  for (let i = 0; i < (subs ?? []).length; i++) {
-    const s = (subs ?? [])[i];
-    if (s.status !== 'success' || !s.result) continue;
-    const [submitter, projContract, metaURI, votes, prizeAw, claimed] = s.result;
-    if (submitter.toLowerCase() !== account.toLowerCase()) continue;
-    mySubmissions.push({ id: i, submitter, projContract, metaURI, votes, prizeAw, claimed });
+  if (progOk) {
+    for (let i = 0; i < (subs ?? []).length; i++) {
+      const s = (subs ?? [])[i];
+      if (s.status !== 'success' || !s.result) continue;
+      const [submitter, projContract, metaURI, votes, prizeAw, claimed] = s.result;
+      if (submitter.toLowerCase() !== account.toLowerCase()) continue;
+      mySubmissions.push({ id: i, submitter, projContract, metaURI, votes, prizeAw, claimed });
+    }
   }
 
-  if (mySubmissions.length === 0) return null;
+  // Notify parent once when this row has matched submissions
+  const reported = useState(false);
+  useEffect(() => {
+    if (mySubmissions.length > 0 && !reported[0]) { reported[1](true); onMatch?.(); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mySubmissions.length]);
+
+  if (!progOk || mySubmissions.length === 0) return null;
 
   return (
     <div className="rounded-xl" style={{ border: '1px solid var(--border)' }}>
