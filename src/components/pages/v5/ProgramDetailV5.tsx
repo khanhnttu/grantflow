@@ -8,7 +8,7 @@
  *  - Edit button for sponsor (0 submissions, before deadline).
  *  - ShareBox in header.
  */
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   ArrowLeft, ExternalLink, RefreshCw, CheckCircle2, AlertTriangle,
   Globe, Edit2, Send, PlusCircle, Trash2, Users, User,
@@ -74,6 +74,8 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
   const [isJudge, setIsJudge] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [votesLeft, setVotesLeft] = useState(0);
+  // Per-submission voted-on tracking (keyed by submissionId)
+  const [votedOnMap, setVotedOnMap] = useState<Record<number, boolean>>({});
 
   // ── TX state ─────────────────────────────────────────────────────────────────
   const {
@@ -142,9 +144,28 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
             functionName: 'votesRemaining', args: [BigInt(programId), account],
           }).catch(() => 0n),
         ]);
-        setIsJudge(judgeRes);
+        const isJudgeNow = judgeRes;
+        setIsJudge(isJudgeNow);
         setHasSubmitted(subRes);
         setVotesLeft(Number(votesRes));
+
+        // Fetch per-submission hasVotedOn for judges so we can show "already voted"
+        if (isJudgeNow && cnt > 0) {
+          const votedChecks = await Promise.all(
+            Array.from({ length: Number(cnt) }, (_, i) =>
+              readClient.readContract({
+                address: readCfg.v5Address, abi: GRANTFLOW_V5_ABI,
+                functionName: 'hasVotedOn',
+                args: [BigInt(programId), account, BigInt(i)],
+              }).catch(() => false)
+            )
+          );
+          const map: Record<number, boolean> = {};
+          votedChecks.forEach((v, i) => { map[i] = v; });
+          setVotedOnMap(map);
+        } else {
+          setVotedOnMap({});
+        }
       }
     } catch { /* ignore */ }
   }, [readCfg, readClient, programId, account]);
@@ -170,6 +191,19 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
     const iv = setInterval(() => setNowLive(Math.floor(Date.now() / 1000)), 30_000);
     return () => clearInterval(iv);
   }, []);
+
+  // Re-load role/vote state when a deadline passes (phase change might unlock/lock buttons)
+  const prevNowRef = useRef(nowSec);
+  useEffect(() => {
+    if (!prog) return;
+    const prev = prevNowRef.current;
+    prevNowRef.current = nowLive;
+    const crossed = (deadline: number) => prev < deadline && nowLive >= deadline;
+    if (crossed(prog.submissionDeadline) || crossed(prog.judgingDeadline)) {
+      void loadAux();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nowLive]);
 
   if (loading) {
     return (
@@ -206,11 +240,51 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
   const isSponsor  = !!account && account.toLowerCase() === prog.sponsor.toLowerCase();
   const canEdit    = isSponsor && subCount === 0 && !prog.cancelled && !prog.finalized &&
                      nowLive < prog.submissionDeadline;
+
+  // ── Submit guards ─────────────────────────────────────────────────────────────
+  // canSubmit = form shown + button enabled
   const canSubmit  = !hasSubmitted && !isJudge && !isSponsor && phase === Phase.Submission;
-  const canVote    = isJudge && phase === Phase.Judging && votesLeft > 0;
-  const canFinalize = !!account && phase === Phase.Judging &&
-                      nowLive >= prog.judgingDeadline;
-  const canCancel  = isSponsor && !prog.finalized && !prog.cancelled && subCount === 0;
+  // submitBlockedReason = wallet is connected but submission is impossible for a specific reason
+  const submitBlockedReason: string | null = !account ? null
+    : hasSubmitted         ? null  // already shown with a note below the form
+    : isJudge              ? t('program.reason.isJudge')
+    : isSponsor            ? t('program.reason.isSponsor')
+    : phase !== Phase.Submission ? (
+        prog.finalized  ? t('program.reason.alreadyFin') :
+        prog.cancelled  ? t('program.reason.alreadyCan') :
+        nowLive >= prog.judgingDeadline ? t('program.reason.judClosed') :
+                          t('program.reason.subClosed')
+      ) : null;
+
+  // ── Vote guards (per-submission) ──────────────────────────────────────────────
+  // voteReasonFor(subId) = reason to disable this specific Vote button
+  const voteReasonFor = (subId: number): string | null => {
+    if (!isJudge)                   return null; // button hidden anyway
+    if (votedOnMap[subId])          return t('program.reason.alreadyVoted');
+    if (votesLeft <= 0)             return t('program.reason.noVotesLeft');
+    return null;
+  };
+
+  // ── Finalize guards ───────────────────────────────────────────────────────────
+  const canFinalize = !!account && phase === Phase.Judging && nowLive >= prog.judgingDeadline;
+  // finalizeReason = shown alongside the finalize button when state is unusual but valid
+  const finalizeDisabledReason: string | null =
+    prog.finalized   ? t('program.reason.alreadyFin')  :
+    prog.cancelled   ? t('program.reason.alreadyCan')  :
+    nowLive < prog.judgingDeadline ? t('program.reason.notAfterJud') :
+    null;
+  // Warning shown when finalize would refund everything (no votes cast on any submission)
+  const totalVotesCast = subs.reduce((acc, s) => acc + Number(s.votes), 0);
+  const finalizeNoVotesWarn = canFinalize && subCount > 0 && totalVotesCast === 0;
+
+  // ── Cancel guards ─────────────────────────────────────────────────────────────
+  // Always show cancel button to sponsor (with disabled+reason instead of hiding it)
+  const showCancel   = isSponsor && !prog.finalized && !prog.cancelled;
+  const cancelEnabled = showCancel && subCount === 0;
+  const cancelDisabledReason: string | null =
+    !showCancel    ? null :
+    subCount > 0   ? t('program.reason.subsExist') :
+    null;
 
   const pool = totalPool(prog.prizes);
   const fmt  = (n: bigint) => formatUnits(n, readCfg.usdcDecimals);
@@ -395,20 +469,30 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
           if (isJudgingEnded) {
             // Judging deadline passed but not yet finalized — show clear awaiting-finalize state
             return (
-              <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs"
-                style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
-                <span style={{ color: '#10b981', fontWeight: 600 }}>
-                  {t('phase.judgingEnded')}
-                </span>
-                {canFinalize && (
-                  <button
-                    onClick={() => void handleFinalize()}
-                    disabled={busy || disableTx}
-                    title={disableTx ? t('banner.txDisabled') : undefined}
-                    className="px-3 py-1.5 rounded-lg font-medium text-xs disabled:opacity-50 transition-opacity hover:opacity-80"
-                    style={{ background: '#10b981', color: '#fff' }}>
-                    {busy ? '…' : t('results.finalizeCta')}
-                  </button>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs"
+                  style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                  <span style={{ color: '#10b981', fontWeight: 600 }}>
+                    {t('phase.judgingEnded')}
+                  </span>
+                  {canFinalize && (
+                    <button
+                      onClick={() => void handleFinalize()}
+                      disabled={busy || disableTx || !!finalizeDisabledReason}
+                      title={disableTx ? t('banner.txDisabled') : (finalizeDisabledReason ?? undefined)}
+                      className="px-3 py-1.5 rounded-lg font-medium text-xs disabled:opacity-50 transition-opacity hover:opacity-80"
+                      style={{ background: '#10b981', color: '#fff' }}>
+                      {busy ? '…' : t('results.finalizeCta')}
+                    </button>
+                  )}
+                  {finalizeDisabledReason && !canFinalize && (
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{finalizeDisabledReason}</span>
+                  )}
+                </div>
+                {finalizeNoVotesWarn && (
+                  <p className="text-xs px-1" style={{ color: '#f59e0b' }}>
+                    ⚠ {t('program.reason.noVotesWarn')}
+                  </p>
                 )}
               </div>
             );
@@ -454,7 +538,7 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
             programId={programId}
             programName={prog.name}
             contractVersion="v5"
-            onFinalize={canFinalize ? () => void handleFinalize() : undefined}
+            onFinalize={canFinalize && !finalizeDisabledReason ? () => void handleFinalize() : undefined}
             finalizeBusy={busy}
             disableTx={disableTx}
             networkOverride={{ cfg: readCfg, client: readClient }}
@@ -636,6 +720,12 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
                 {t('program.alreadySubmitted')}
               </p>
             )}
+            {/* Show reason when wallet is connected but can't submit (and haven't submitted) */}
+            {submitBlockedReason && !hasSubmitted && (
+              <p className="text-sm px-1" style={{ color: 'var(--text-muted)' }}>
+                {submitBlockedReason}
+              </p>
+            )}
             {/* Submission list */}
             {subs.length === 0 && !canSubmit && (
               <p className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>
@@ -656,15 +746,20 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       {sub.votes.toString()} {t('program.votes')}
                     </span>
-                    {canVote && (
-                      <button
-                        onClick={() => void handleVote(sub.id)}
-                        disabled={busy || disableTx}
-                        className="px-2.5 py-1 rounded-lg text-xs font-medium disabled:opacity-50"
-                        style={{ background: 'var(--accent)', color: '#fff' }}>
-                        Vote
-                      </button>
-                    )}
+                    {isJudge && phase === Phase.Judging && (() => {
+                      const reason = voteReasonFor(sub.id);
+                      const isDisabled = !!reason || busy || disableTx;
+                      return (
+                        <button
+                          onClick={() => { if (!isDisabled) void handleVote(sub.id); }}
+                          disabled={isDisabled}
+                          title={reason ?? (disableTx ? t('banner.txDisabled') : undefined)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium disabled:opacity-50 transition-opacity hover:opacity-80"
+                          style={{ background: reason ? 'var(--surface)' : 'var(--accent)', color: reason ? 'var(--text-muted)' : '#fff', border: reason ? '1px solid var(--border)' : 'none' }}>
+                          {reason ? '✓' : t('action.vote')}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
                 {sub.metadataURI && (
@@ -727,15 +822,23 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
         )}
       </div>
 
-      {/* Cancel button */}
-      {canCancel && (
-        <button
-          onClick={() => void handleCancel()}
-          disabled={busy || disableTx}
-          className="text-xs hover:underline disabled:opacity-50 w-fit"
-          style={{ color: 'var(--text-muted)' }}>
-          {t('program.cancelBtn')}
-        </button>
+      {/* Cancel button — shown to sponsor even when disabled, with reason */}
+      {showCancel && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { if (cancelEnabled) void handleCancel(); }}
+            disabled={!cancelEnabled || busy || disableTx}
+            title={cancelDisabledReason ?? (disableTx ? t('banner.txDisabled') : undefined)}
+            className="text-xs hover:underline disabled:opacity-50 w-fit"
+            style={{ color: 'var(--text-muted)' }}>
+            {t('program.cancelBtn')}
+          </button>
+          {cancelDisabledReason && (
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              — {cancelDisabledReason}
+            </span>
+          )}
+        </div>
       )}
 
       {/* TX feedback */}

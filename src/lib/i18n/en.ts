@@ -804,6 +804,20 @@ export const EN = {
   'program.cancelBtn':      'Cancel program',
   'program.alreadySubmitted': 'You already submitted to this program.',
 
+  // Action guard reasons
+  'program.reason.subClosed':     'Submission period ended',
+  'program.reason.judClosed':     'Judging closed',
+  'program.reason.notAfterJud':   'Judging deadline not reached yet',
+  'program.reason.alreadyFin':    'Already finalized',
+  'program.reason.alreadyCan':    'Already cancelled',
+  'program.reason.alreadyVoted':  'Already voted on this submission',
+  'program.reason.noVotesLeft':   'No votes remaining',
+  'program.reason.subsExist':     'Cannot cancel — submissions exist',
+  'program.reason.notSponsor':    'Only the sponsor can do this',
+  'program.reason.isJudge':       'Judges cannot submit',
+  'program.reason.isSponsor':     'Sponsors cannot submit',
+  'program.reason.noVotesWarn':   'No submissions have votes — prize pool will be refunded to sponsor',
+
   // ── Phase labels ─────────────────────────────────────────────────
   'phase.judgingEnded':     'Judging ended — awaiting finalize',
 

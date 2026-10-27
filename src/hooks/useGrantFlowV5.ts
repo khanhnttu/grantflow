@@ -11,7 +11,7 @@
  */
 import { useState, useCallback, useEffect } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
-import { parseUnits, formatUnits, type Hash, type PublicClient } from 'viem';
+import { parseUnits, formatUnits, type Hash, type PublicClient, ContractFunctionRevertedError } from 'viem';
 import { useNetworkStore } from './useNetworkStore';
 import { isAlreadyInFlight } from './useTxRecovery';
 
@@ -502,13 +502,79 @@ export function useV5UsdcAllowance(owner: `0x${string}` | undefined) {
 
 // ── Write hook ────────────────────────────────────────────────────────────────
 
-/** sendAndConfirm — wraps writeContractAsync + waitForTransactionReceipt */
+/**
+ * simulateV5 — calls simulateContract on the app-selected network's public client.
+ * Returns null on success, or a human-readable revert reason string on failure.
+ * Uses the app client (not the wallet transport), so chain mismatch never causes
+ * a spurious "wrong network" error — we're just doing a static call.
+ */
+export async function simulateV5(
+  appClient: PublicClient,
+  account: `0x${string}`,
+  request: { address: `0x${string}`; abi: unknown; functionName: string; args: unknown[] },
+): Promise<string | null> {
+  try {
+    await appClient.simulateContract({
+      ...(request as Parameters<typeof appClient.simulateContract>[0]),
+      account,
+    });
+    return null; // simulation passed
+  } catch (err) {
+    // ContractFunctionRevertedError carries a decoded error name
+    if (err instanceof ContractFunctionRevertedError) {
+      const name = err.data?.errorName ?? err.shortMessage ?? String(err);
+      return parseV5RevertName(name);
+    }
+    const raw = err instanceof Error ? (err.message + ' ' + ((err as { details?: string }).details ?? '')) : String(err);
+    return parseV5Error(raw);
+  }
+}
+
+/** parseV5RevertName — map a Solidity custom-error name to a human message */
+function parseV5RevertName(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('notsubmissionphase'))  return 'Submission period ended';
+  if (n.includes('notjudgingphase'))     return 'Judging is not open';
+  if (n.includes('notafterjudging'))     return 'Judging deadline not reached yet';
+  if (n.includes('alreadyfinalized'))    return 'Already finalized';
+  if (n.includes('alreadycancelled'))    return 'Already cancelled';
+  if (n.includes('alreadyvoted'))        return 'Already voted on this submission';
+  if (n.includes('alreadysubmitted'))    return 'Already submitted';
+  if (n.includes('toomanysub'))          return 'Submission limit reached';
+  if (n.includes('submissionsexist'))    return 'Cannot cancel — submissions exist';
+  if (n.includes('notsponsor'))          return 'Only the sponsor can do this';
+  if (n.includes('notjudge'))            return 'Only assigned judges can vote';
+  if (n.includes('conflictofinterest'))  return 'Conflict of interest — you are a judge or sponsor';
+  if (n.includes('invalidparams'))       return 'Invalid parameters';
+  if (n.includes('invalidshares'))       return 'Team shares must sum to 100%';
+  if (n.includes('duplicatemember'))     return 'Duplicate wallet in team';
+  if (n.includes('toomanymembers'))      return 'Team size exceeds limit';
+  if (n.includes('invalidprojectcontract')) return 'Invalid project contract address';
+  if (n.includes('wrongprogramtype'))    return 'Wrong submission type for this program';
+  if (n.includes('programnotfound'))     return 'Program not found';
+  if (n.includes('submissionnotfound'))  return 'Submission not found';
+  if (n.includes('invalidparam'))        return 'Invalid parameter';
+  return name; // return the raw error name as a last resort
+}
+
+/** sendAndConfirm — wraps simulateContract (preflight) + writeContractAsync + waitForTransactionReceipt */
 async function sendAndConfirm(
   writeContractAsync: (args: Record<string, unknown>) => Promise<Hash>,
   appClient: PublicClient,
   request: Record<string, unknown>,
   onHash?: (hash: Hash) => void,
+  account?: `0x${string}`,
 ): Promise<Hash> {
+  // Pre-flight simulation — catches revert reasons before opening the wallet
+  if (account) {
+    const simErr = await simulateV5(
+      appClient,
+      account,
+      request as { address: `0x${string}`; abi: unknown; functionName: string; args: unknown[] },
+    );
+    if (simErr) throw new Error(simErr);
+  }
+
   let hash: Hash;
   try {
     hash = await writeContractAsync(request);
@@ -572,7 +638,7 @@ export function useV5Write() {
         abi: ERC20_ABI_V5,
         functionName: 'approve',
         args: [config.v5Address, amount],
-      }, setTxHash);
+      }, setTxHash, address);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -591,7 +657,7 @@ export function useV5Write() {
         args: [args.name, args.description, args.prizes,
           args.submissionDeadline, args.judgingDeadline,
           args.judges, args.programType, args.category],
-      }, setTxHash);
+      }, setTxHash, address);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -610,7 +676,7 @@ export function useV5Write() {
         abi: GRANTFLOW_V5_ABI,
         functionName: 'submit',
         args: [BigInt(programId), projectContract, metadataURI, payees, sharesBps],
-      }, setTxHash);
+      }, setTxHash, address);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -623,7 +689,7 @@ export function useV5Write() {
         abi: GRANTFLOW_V5_ABI,
         functionName: 'vote',
         args: [BigInt(programId), BigInt(submissionId)],
-      }, setTxHash);
+      }, setTxHash, address);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -636,7 +702,7 @@ export function useV5Write() {
         abi: GRANTFLOW_V5_ABI,
         functionName: 'finalize',
         args: [BigInt(programId)],
-      }, setTxHash);
+      }, setTxHash, address);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -649,7 +715,7 @@ export function useV5Write() {
         abi: GRANTFLOW_V5_ABI,
         functionName: 'cancel',
         args: [BigInt(programId)],
-      }, setTxHash);
+      }, setTxHash, address);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);
@@ -666,7 +732,7 @@ export function useV5Write() {
         functionName: 'updateProgram',
         args: [BigInt(args.programId), args.name, args.description,
           args.submissionDeadline, args.judgingDeadline],
-      }, setTxHash);
+      }, setTxHash, address);
       return hash;
     });
   }, [address, config, appClient, write, wcAsync]);

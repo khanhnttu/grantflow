@@ -389,6 +389,20 @@ export const VI_4 = {
   'program.cancelBtn':      'Huỷ chương trình',
   'program.alreadySubmitted': 'Bạn đã nộp bài cho chương trình này rồi.',
 
+  // Action guard reasons
+  'program.reason.subClosed':     'Thời gian nộp bài đã kết thúc',
+  'program.reason.judClosed':     'Giai đoạn chấm điểm đã kết thúc',
+  'program.reason.notAfterJud':   'Hạn chấm điểm chưa đến',
+  'program.reason.alreadyFin':    'Đã hoàn tất',
+  'program.reason.alreadyCan':    'Đã huỷ',
+  'program.reason.alreadyVoted':  'Bạn đã bình chọn bài này rồi',
+  'program.reason.noVotesLeft':   'Hết lượt bình chọn',
+  'program.reason.subsExist':     'Không thể huỷ — đã có bài nộp',
+  'program.reason.notSponsor':    'Chỉ nhà tài trợ mới thực hiện được',
+  'program.reason.isJudge':       'Giám khảo không được nộp bài',
+  'program.reason.isSponsor':     'Nhà tài trợ không được nộp bài',
+  'program.reason.noVotesWarn':   'Chưa có bài nào được bình chọn — toàn bộ giải thưởng sẽ hoàn về nhà tài trợ',
+
   // ── Deploy (extra strings) ────────────────────────────────────────────────
   'deploy.wrongNetwork':    'Ví của bạn đang ở mạng khác. Chuyển sang Arc Mainnet để triển khai.',
   'deploy.switchNetwork':   'Chuyển sang Arc Mainnet',
