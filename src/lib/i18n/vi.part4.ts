@@ -57,6 +57,7 @@ export const VI_4 = {
   'slimFooter.readLive': 'Đọc trực tiếp từ Arc mainnet',
   'slimFooter.contract': 'Hợp đồng',
   'slimFooter.github':   'GitHub',
+  'slimFooter.source':   'Mã nguồn',
 
   // ── AppShell topbar ───────────────────────────────────────────────────────
   'topbar.collapse':  'Thu gọn sidebar',

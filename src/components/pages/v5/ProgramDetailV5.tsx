@@ -43,7 +43,8 @@ interface Props {
 type TabId = 'results' | 'details' | 'submissions' | 'judges';
 
 export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const dtLocale = lang === 'vi' ? 'vi-VN' : undefined;
   // Global store — only used for write txs (wallet must be on this network)
   const { config: globalConfig } = useNetworkStore();
   const disableTx   = useDisableTx();
@@ -384,8 +385,8 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
           <StatCell label={t('program.pool')} value={`${fmt(pool)} USDC`} />
           <StatCell label={t('program.prizes')} value={`${prog.prizes.length} ${t('program.ranks')}`} />
-          <StatCell label={t('program.subDeadline')} value={new Date(prog.submissionDeadline * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
-          <StatCell label={t('program.judDeadline')} value={new Date(prog.judgingDeadline * 1000).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
+          <StatCell label={t('program.subDeadline')} value={new Date(prog.submissionDeadline * 1000).toLocaleString(dtLocale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
+          <StatCell label={t('program.judDeadline')} value={new Date(prog.judgingDeadline * 1000).toLocaleString(dtLocale, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} />
         </div>
 
         {/* Countdown / phase banner */}
@@ -424,21 +425,6 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
             </div>
           );
         })()}
-
-        {/* Finalize banner */}
-        {canFinalize && (
-          <div className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs"
-            style={{ background: '#10b98115', border: '1px solid #10b98144' }}>
-            <span className="font-semibold" style={{ color: '#10b981' }}>{t('results.finalizeReady')}</span>
-            <button
-              onClick={() => void handleFinalize()}
-              disabled={busy || disableTx}
-              className="px-3 py-1.5 rounded-lg font-medium text-xs disabled:opacity-50 transition-opacity hover:opacity-80"
-              style={{ background: '#10b981', color: '#fff' }}>
-              {busy ? '…' : t('results.finalizeCta')}
-            </button>
-          </div>
-        )}
 
         {/* ShareBox */}
         <ShareBox url={shareUrl} programName={prog.name} compact />
@@ -819,7 +805,7 @@ function StatCell({ label, value }: { label: string; value: string }) {
     <div className="flex flex-col gap-0.5 px-3 py-2 rounded-xl"
       style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
       <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>{value}</span>
+      <span className="text-sm font-semibold break-words leading-snug" style={{ color: 'var(--text)' }}>{value}</span>
     </div>
   );
 }

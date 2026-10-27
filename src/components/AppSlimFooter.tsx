@@ -44,7 +44,7 @@ export function AppSlimFooter() {
         target="_blank" rel="noopener noreferrer"
         className="hover:opacity-80 transition-opacity"
       >
-        Source code
+        {t('slimFooter.source')}
       </a>
     </footer>
   );

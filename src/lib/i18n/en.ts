@@ -459,6 +459,7 @@ export const EN = {
   'slimFooter.readLive': 'Read live from Arc mainnet',
   'slimFooter.contract': 'Contract',
   'slimFooter.github':   'GitHub',
+  'slimFooter.source':   'Source code',
 
   // ── AppShell topbar ───────────────────────────────────────────────────────
   'topbar.collapse':  'Collapse sidebar',
