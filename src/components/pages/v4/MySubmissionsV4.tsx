@@ -58,7 +58,7 @@ export function MySubmissionsV4({ onSelect }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3" style={{ color: 'var(--text-muted)' }}>
         <span className="text-4xl">🔗</span>
-        <p className="text-sm">Connect your wallet to see your submissions.</p>
+        <p className="text-sm">{t('mySubs.noWallet')}</p>
       </div>
     );
   }
@@ -149,7 +149,7 @@ function ProgramRow({ pid, account, explorer, onSelect, programs }:
         <div key={sub.id} className="px-4 py-3 flex items-center justify-between gap-2 flex-wrap">
           <div>
             <div className="text-xs font-medium mb-0.5" style={{ color: 'var(--text)' }}>
-              Submission #{sub.id}
+              Submission #{sub.id + 1}
             </div>
             {sub.metaURI && (
               <a href={sub.metaURI.startsWith('http') ? sub.metaURI : `https://${sub.metaURI}`}
@@ -181,10 +181,11 @@ function ProgramRow({ pid, account, explorer, onSelect, programs }:
 }
 
 function Empty() {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-3" style={{ color: 'var(--text-muted)' }}>
       <span className="text-4xl">📭</span>
-      <p className="text-sm">You have not submitted to any programs yet.</p>
+      <p className="text-sm">{t('mySubs.empty')}</p>
     </div>
   );
 }

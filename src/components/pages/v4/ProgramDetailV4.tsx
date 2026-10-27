@@ -228,7 +228,7 @@ export function ProgramDetailV4({ programId, onBack }: Props) {
     await sendWithRecovery(
       () => vote(BigInt(programId), BigInt(sid)),
       makeVotePoller(appClient, config.v4Address, BigInt(programId), BigInt(sid), prevVotes),
-      txOpts(`Voted on submission #${sid}.`),
+      txOpts(`Voted on submission #${sid + 1}.`),
     );
     setBusy(false);
   };

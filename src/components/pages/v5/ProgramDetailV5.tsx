@@ -269,7 +269,7 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
   const handleVote = async (subId: number) => {
     clearErr(); setTxOk('');
     const hash = await vote(programId, subId);
-    if (hash) { setTxOk('Vote cast!'); setVotesLeft(v => Math.max(0, v - 1)); void refetchSubs(); }
+    if (hash) { setTxOk(`Vote cast on #${subId + 1}!`); setVotesLeft(v => Math.max(0, v - 1)); void refetchSubs(); }
   };
 
   const handleFinalize = async () => {
@@ -607,7 +607,8 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
 
                 <button
                   onClick={() => void handleSubmit()}
-                  disabled={!subMeta || busy || disableTx}
+                  disabled={!subMeta || busy || disableTx ||
+                    (prog.programType === 0 && !/^0x[0-9a-fA-F]{40}$/.test(subContract))}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50 transition-opacity hover:opacity-80"
                   style={{ background: 'var(--accent)', color: '#fff' }}>
                   <Send size={13} /> {t('program.submitBtn')}
@@ -632,7 +633,7 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
                   <div className="flex items-center gap-2">
                     {!sub.isSolo && <Users size={12} style={{ color: 'var(--accent)' }} />}
                     <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                      #{sub.id} · {sub.isSolo ? shortAddr(sub.submitter) : (sub.teamName || t('team.unnamed'))}
+                      #{sub.id + 1} · {sub.isSolo ? shortAddr(sub.submitter) : (sub.teamName || t('team.unnamed'))}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">

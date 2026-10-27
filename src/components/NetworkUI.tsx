@@ -195,7 +195,11 @@ export function NetworkDropdown() {
 // ── WrongNetworkBanner ────────────────────────────────────────────────────────
 
 export function WrongNetworkBanner() {
-  const { isWrong, walletChainLabel, appChainLabel, switchNetwork } = useWrongNetwork();
+  const {
+    isWrong, walletChainLabel, walletChainId,
+    appChainLabel, appChainId,
+    isMisconfigured, switchNetwork,
+  } = useWrongNetwork();
   const [switching, setSwitching] = useState(false);
   const [err, setErr]             = useState('');
 
@@ -203,7 +207,7 @@ export function WrongNetworkBanner() {
     setSwitching(true);
     setErr('');
     const ok = await switchNetwork();
-    if (!ok) setErr('Switch failed. Add the network manually in your wallet.');
+    if (!ok) setErr('Switch failed — add the network manually (see hint below).');
     setSwitching(false);
   }, [switchNetwork]);
 
@@ -211,7 +215,7 @@ export function WrongNetworkBanner() {
 
   return (
     <div
-      className="w-full flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"
+      className="w-full flex flex-col gap-2 px-4 py-2.5 text-sm"
       style={{
         background: 'rgba(245,158,11,0.12)',
         borderBottom: '1px solid rgba(245,158,11,0.30)',
@@ -220,24 +224,40 @@ export function WrongNetworkBanner() {
       role="alert"
       aria-live="polite"
     >
-      <span className="flex items-center gap-2 font-medium">
-        <AlertTriangle size={15} style={{ color: '#d97706', flexShrink: 0 }} aria-hidden />
-        Your wallet is on <strong className="mx-1">{walletChainLabel}</strong>
-        but the app is on <strong className="mx-1">{appChainLabel}</strong>.
-        Transaction buttons are disabled until you switch.
-      </span>
-      <div className="flex items-center gap-3">
-        {err && <span className="text-xs text-red-500">{err}</span>}
-        <button
-          onClick={() => void handleSwitch()}
-          disabled={switching}
-          className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-opacity disabled:opacity-60 focus-visible:outline-2"
-          style={{ background: '#d97706', color: '#fff' }}
-          aria-label={`Switch wallet to ${appChainLabel}`}
-        >
-          {switching ? 'Switching…' : `Switch to ${appChainLabel}`}
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-2 font-medium">
+          <AlertTriangle size={15} style={{ color: '#d97706', flexShrink: 0 }} aria-hidden />
+          Wallet is on{' '}
+          <strong className="mx-0.5">
+            {walletChainLabel}{walletChainId !== undefined ? ` (chain ${walletChainId})` : ''}
+          </strong>
+          — app expects{' '}
+          <strong className="mx-0.5">{appChainLabel} (chain {appChainId})</strong>.
+          Tx buttons disabled.
+        </span>
+        <div className="flex items-center gap-3">
+          {err && <span className="text-xs text-red-600">{err}</span>}
+          <button
+            onClick={() => void handleSwitch()}
+            disabled={switching}
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-opacity disabled:opacity-60 focus-visible:outline-2"
+            style={{ background: '#d97706', color: '#fff' }}
+            aria-label={`Switch wallet to ${appChainLabel}`}
+          >
+            {switching ? 'Switching…' : `Switch to ${appChainLabel}`}
+          </button>
+        </div>
       </div>
+      {/* Misconfigured-wallet hint: wallet shows the right name but wrong chainId */}
+      {isMisconfigured && (
+        <p className="text-xs" style={{ color: '#92400e' }}>
+          <strong>Hint:</strong> Your wallet already has a network named
+          &ldquo;{appChainLabel}&rdquo; but it reports chain ID {walletChainId} instead of {appChainId}.
+          In MetaMask: Settings → Networks → {appChainLabel} → change Chain ID to {appChainId} and RPC to{' '}
+          <code className="font-mono">{appChainId === 5042 ? 'https://rpc.mainnet.arc.io' : 'https://rpc.testnet.arc.io'}</code>,
+          or delete that entry and click &ldquo;Switch to {appChainLabel}&rdquo; above to add the correct one.
+        </p>
+      )}
     </div>
   );
 }
