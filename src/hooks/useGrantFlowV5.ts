@@ -9,7 +9,7 @@
  *  - description stores JSON: {"desc":"...","sponsorName":"...","website":"...","logo":"..."}
  *    Old plain-text descriptions are still displayed as-is.
  */
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
 import { parseUnits, formatUnits, type Hash, type PublicClient } from 'viem';
 import { useNetworkStore } from './useNetworkStore';
@@ -301,8 +301,9 @@ export function useV5FeeBps() {
     } catch { /* ignore */ }
   }, [config, appClient]);
 
-  // Initial load
-  useMemo(() => { void refetch(); }, [refetch]);  // eslint-disable-line react-hooks/exhaustive-deps
+  // Initial load — useEffect, not useMemo (side-effects must not run during render)
+  // eslint-disable-next-line react/set-state-in-effect
+  useEffect(() => { void refetch(); }, [refetch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { feeBps, refetch };
 }

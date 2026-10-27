@@ -25,7 +25,7 @@ import { ResultsTab } from '@/components/pages/v5/ResultsTab';
 import { EditProgramModal } from '@/components/pages/v5/EditProgramModal';
 import {
   useV5Write, useV5ProgramForChain, useV5SubmissionsForChain,
-  buildProgramUrl, slugify, GRANTFLOW_V5_ABI,
+  buildProgramUrl, GRANTFLOW_V5_ABI,
 } from '@/hooks/useGrantFlowV5';
 import {
   computePhase, countdownLabel, totalPool,
@@ -210,6 +210,11 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
 
   const handleSubmit = async () => {
     if (!subMeta || !account) return;
+    // ONCHAIN_BUILD requires a valid contract address; OPEN_BOUNTY always uses address(0)
+    if (prog.programType === 0 && !/^0x[0-9a-fA-F]{40}$/.test(subContract)) {
+      setSharesErr('A deployed contract address (0x…) is required for Onchain Build submissions.');
+      return;
+    }
     setSharesErr('');
     clearErr(); setTxOk('');
 
@@ -571,8 +576,11 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
                         />
                         {teamMembers.length > 1 && (
                           <button onClick={() => {
+                            const newShares = memberShares.filter((_, j) => j !== i);
+                            const newTotal = newShares.reduce((a, x) => a + (parseFloat(x) || 0), 0);
+                            setLeaderShare(Math.max(0, 100 - newTotal).toFixed(2));
                             setTeamMembers(prev => prev.filter((_, j) => j !== i));
-                            setMemberShares(prev => prev.filter((_, j) => j !== i));
+                            setMemberShares(newShares);
                           }} style={{ color: 'var(--text-muted)' }}>
                             <Trash2 size={13} />
                           </button>

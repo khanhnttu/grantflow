@@ -27,7 +27,7 @@ import { ComparePage } from '@/components/pages/ComparePage';
 import { DevelopersPage } from '@/components/pages/DevelopersPage';
 import { BuiltVsPlannedPage } from '@/components/pages/BuiltVsPlannedPage';
 
-import { parseProgramPath, buildProgramUrl, slugify } from '@/hooks/useGrantFlowV5';
+import { parseProgramPath, buildProgramUrl } from '@/hooks/useGrantFlowV5';
 
 // ── Marketing pages: full-width without sidebar, big footer ──────────────────
 // These render outside the app shell, with a full-width layout.

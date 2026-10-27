@@ -113,6 +113,12 @@ export function ResultsTab({
 
       if (contractVersion === 'v5' && config.v5Address) {
         try {
+          // Use a bounded lookback (head − 500 000 blocks) rather than scanning from 0.
+          // V5 contracts are recent; scanning from genesis on a live chain causes
+          // RPC range errors and unnecessary latency.
+          const headBlock = await appClient.getBlockNumber().catch(() => 500_000n);
+          const fromBlock = headBlock > 500_000n ? headBlock - 500_000n : 0n;
+
           // Fetch PrizePaid logs for this programId using parseAbiItem (viem-typed)
           const prizePaidAbi = parseAbiItem(
             'event PrizePaid(uint256 indexed programId, uint256 indexed submissionId, address indexed winner, uint256 amount, uint256 rank)'
@@ -122,7 +128,7 @@ export function ResultsTab({
             event:   prizePaidAbi,
             // eslint-disable-next-line typescript/no-unnecessary-type-assertion
             args:    { programId: BigInt(programId) } as never,
-            fromBlock: 0n,
+            fromBlock,
           }).catch(() => []);
 
           for (const log of prizeLogs) {
@@ -140,7 +146,7 @@ export function ResultsTab({
             event:   sponsorRefundedAbi,
             // eslint-disable-next-line typescript/no-unnecessary-type-assertion
             args:    { programId: BigInt(programId) } as never,
-            fromBlock: 0n,
+            fromBlock,
           }).catch(() => []);
 
           if (refundLogs[0]?.transactionHash) refundTx = refundLogs[0].transactionHash;

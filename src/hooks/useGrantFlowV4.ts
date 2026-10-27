@@ -609,6 +609,16 @@ const SUBMITTED_EVENT = parseAbiItem(
   'event Submitted(uint256 indexed programId, uint256 indexed submissionId, address indexed submitter, address projectContract, string metadataURI)',
 );
 
+/** Resolve a bounded fromBlock: head − 500 000 (or 0n when chain is short). */
+async function boundedFromBlock(client: import('viem').PublicClient): Promise<bigint> {
+  try {
+    const head = await client.getBlockNumber();
+    return head > 500_000n ? head - 500_000n : 0n;
+  } catch {
+    return 0n;
+  }
+}
+
 export function usePrizeAssignedLogs(programId: number | undefined) {
   const { appClient } = useNetworkStore();
   const { v4 } = useAddrs();
@@ -617,11 +627,13 @@ export function usePrizeAssignedLogs(programId: number | undefined) {
   useEffect(() => {
     if (programId === undefined) return;
     let cancelled = false;
-    appClient.getLogs({
-      address: v4, event: PRIZE_ASSIGNED_EVENT,
-      args: { programId: BigInt(programId) },
-      fromBlock: 'earliest', toBlock: 'latest',
-    }).then(raw => {
+    boundedFromBlock(appClient).then(fromBlock =>
+      appClient.getLogs({
+        address: v4, event: PRIZE_ASSIGNED_EVENT,
+        args: { programId: BigInt(programId) },
+        fromBlock, toBlock: 'latest',
+      })
+    ).then(raw => {
       if (cancelled) return;
       setLogs(raw.map(l => ({
         programId: l.args.programId ?? 0n, submissionId: l.args.submissionId ?? 0n,
@@ -642,10 +654,12 @@ export function useClaimedLogs() {
 
   useEffect(() => {
     let cancelled = false;
-    appClient.getLogs({
-      address: v4, event: CLAIMED_EVENT,
-      fromBlock: 'earliest', toBlock: 'latest',
-    }).then(raw => {
+    boundedFromBlock(appClient).then(fromBlock =>
+      appClient.getLogs({
+        address: v4, event: CLAIMED_EVENT,
+        fromBlock, toBlock: 'latest',
+      })
+    ).then(raw => {
       if (cancelled) return;
       setLogs(raw.map(l => ({
         recipient: l.args.recipient ?? '0x0', amount: l.args.amount ?? 0n,
@@ -666,11 +680,13 @@ export function useReclaimedLogs(programId: number | undefined) {
   useEffect(() => {
     if (programId === undefined) return;
     let cancelled = false;
-    appClient.getLogs({
-      address: v4, event: RECLAIMED_EVENT,
-      args: { programId: BigInt(programId) },
-      fromBlock: 'earliest', toBlock: 'latest',
-    }).then(raw => {
+    boundedFromBlock(appClient).then(fromBlock =>
+      appClient.getLogs({
+        address: v4, event: RECLAIMED_EVENT,
+        args: { programId: BigInt(programId) },
+        fromBlock, toBlock: 'latest',
+      })
+    ).then(raw => {
       if (cancelled) return;
       if (raw.length > 0) {
         const l = raw[raw.length - 1];
@@ -694,11 +710,13 @@ export function useSubmittedLogs(programId: number | undefined) {
   useEffect(() => {
     if (programId === undefined) return;
     let cancelled = false;
-    appClient.getLogs({
-      address: v4, event: SUBMITTED_EVENT,
-      args: { programId: BigInt(programId) },
-      fromBlock: 'earliest', toBlock: 'latest',
-    }).then(raw => {
+    boundedFromBlock(appClient).then(fromBlock =>
+      appClient.getLogs({
+        address: v4, event: SUBMITTED_EVENT,
+        args: { programId: BigInt(programId) },
+        fromBlock, toBlock: 'latest',
+      })
+    ).then(raw => {
       if (cancelled) return;
       setLogs(raw.map(l => ({
         programId: l.args.programId ?? 0n, submissionId: l.args.submissionId ?? 0n,

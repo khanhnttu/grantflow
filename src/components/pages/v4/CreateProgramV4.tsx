@@ -163,9 +163,8 @@ export function CreateProgramV4({ onDone }: Props) {
       if (hash) {
         await refetchV5();
         setTxOk(t('create.review.approved'));
-      } else {
-        setTxErr(v5TxErr || 'Approve failed.');
       }
+      // On failure, v5TxErr is set by useV5Write and shown via effectiveErr — no local copy needed
       setBusy(false);
       return;
     }
@@ -216,7 +215,7 @@ export function CreateProgramV4({ onDone }: Props) {
     });
 
     if (!hash) {
-      setTxErr(v5TxErr || 'Create failed.');
+      // v5TxErr is set by useV5Write and shown via effectiveErr on next render
       setBusy(false);
       return;
     }
