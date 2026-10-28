@@ -157,6 +157,8 @@ export const EN = {
   // ── Explore ───────────────────────────────────────────────────────────────
   'explore.title':              'Programs, paid onchain',
   'explore.subtitle':           'programs · GrantFlowV4',
+  'explore.totalPrograms':      'total programs (V5 + V4 + V3)',
+  'explore.loading':            'Loading programs…',
   'explore.newPrograms':        'New Programs',
   'explore.autoPayout':         'auto-payout',
   'explore.ended':              'Ended',

@@ -71,6 +71,12 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
   const isLoading = countLoading || progsLoading;
   const isError   = countError   || progsError;
 
+  // Counts from all three contract versions — for the header "Total programs" stat
+  const { count: v5Count } = useV5ProgramCount();
+  const { data: v3CountRaw } = useV3Count();
+  const v3Count = Number(v3CountRaw ?? 0);
+  const totalCount = count + (v5Count ?? 0) + v3Count;
+
   const v4Rows = useMemo<ProgramRow[]>(() => {
     if (!programs) return [];
     const result: ProgramRow[] = [];
@@ -126,7 +132,10 @@ export function ExploreV4({ search, onSelect, onSelectV5 }: Props) {
         <div>
           <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>{t('explore.title')}</h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            {rows.length} {t('explore.subtitle')} · V5+V4
+            {totalCount > 0
+              ? <><span className="font-semibold" style={{ color: 'var(--text)' }}>{totalCount}</span>{' '}{t('explore.totalPrograms')}</>
+              : t('explore.loading')
+            }
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -75,6 +75,8 @@ export const VI_2 = {
   // ── Explore ───────────────────────────────────────────────────────────────
   'explore.title':              'Chương trình, thanh toán onchain',
   'explore.subtitle':           'chương trình · GrantFlowV4',
+  'explore.totalPrograms':      'tổng chương trình (V5 + V4 + V3)',
+  'explore.loading':            'Đang tải chương trình…',
   'explore.newPrograms':        'Chương trình mới',
   'explore.autoPayout':         'tự động trả thưởng',
   'explore.ended':              'Đã kết thúc',
