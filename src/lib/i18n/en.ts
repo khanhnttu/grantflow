@@ -19,6 +19,7 @@ export const EN = {
   'nav.contact':          'Contact',
   'nav.deploy':           'Deploy contract',
   'nav.guide':            'Guide',
+  'nav.legacyContracts':  'Legacy contracts',
   'nav.moreMenu':         'More',
 
   // ── Role switcher ─────────────────────────────────────────────────────────
@@ -367,8 +368,9 @@ export const EN = {
   'create.review.approve':   'Approve',
   'create.review.creating':  'Creating…',
   'create.review.createBtn': 'Create program onchain',
-  'create.review.approved':  'Approved. Now confirm the creation.',
-  'create.review.created':   'Program created onchain!',
+  'create.review.approved':     'Approved. Now confirm the creation.',
+  'create.review.feeBreakdown': 'Prize pool {pool} USDC + {pct}% fee {fee} USDC = {total} USDC',
+  'create.review.created':      'Program created onchain!',
   'create.nav.back':         'Back',
   'create.nav.next':         'Next',
 
@@ -458,10 +460,11 @@ export const EN = {
   'footer.openSource':'Open-source on GitHub',
 
   // ── Slim footer ───────────────────────────────────────────────────────────
-  'slimFooter.readLive': 'Read live from Arc mainnet',
-  'slimFooter.contract': 'Contract',
-  'slimFooter.github':   'GitHub',
-  'slimFooter.source':   'Source code',
+  'slimFooter.readLive':   'Read live from Arc mainnet',
+  'slimFooter.contract':   'Contract',
+  'slimFooter.github':     'GitHub',
+  'slimFooter.source':     'Source code',
+  'slimFooter.unaudited':  'Contracts are not audited. Use small amounts.',
 
   // ── AppShell topbar ───────────────────────────────────────────────────────
   'topbar.collapse':  'Collapse sidebar',
@@ -720,6 +723,7 @@ export const EN = {
   'results.votes':          'Votes',
   'results.prize':          'Prize',
   'results.payoutTx':       'Payout tx',
+  'results.finalizeTx':     'View payout tx',
   'results.refundTx':       'Sponsor refund tx',
   'results.totalPaid':      'Total paid out',
   'results.sponsorRefund':  'Sponsor refund',

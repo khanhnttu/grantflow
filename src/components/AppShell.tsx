@@ -216,6 +216,7 @@ function Sidebar({
   const GRANTFLOW_V4_ADDRESS = config.v4Address;
   const GRANTFLOW_ADDRESS    = config.v3Address;
   const NAV = role === 'organizer' ? NAV_ORGANIZER : role === 'judge' ? NAV_JUDGE : NAV_HACKER;
+  const [legacyOpen, setLegacyOpen] = useState(false);
 
   return (
     <>
@@ -287,68 +288,72 @@ function Sidebar({
           })}
         </nav>
 
-        {/* Sidebar bottom: contract links (no GitHub — source code link is in page footer) */}
+        {/* Sidebar bottom: contract links */}
         <div
           className="px-4 py-4 border-t flex-shrink-0"
           style={{ borderColor: 'var(--sidebar-border)' }}
         >
-          {config.v5Address ? (
-            <>
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5 opacity-50" style={{ color: 'var(--sidebar-fg)' }}>
-                Contract V5
-              </p>
-              <a
-                href={`${EXPLORER}/address/${config.v5Address}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80 mb-1"
-                style={{ color: 'var(--sidebar-accent)' }}
-                aria-label={`View V5 contract ${config.v5Address} on explorer`}
-              >
-                <ExternalLink size={10} aria-hidden />
-                {short(config.v5Address)}
-              </a>
-              <a
-                href={`${EXPLORER}/address/${GRANTFLOW_V4_ADDRESS}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 font-mono text-[10px] transition-colors hover:opacity-70 mb-1 opacity-50"
-                style={{ color: 'var(--sidebar-fg)' }}
-                aria-label={`View legacy V4 contract ${GRANTFLOW_V4_ADDRESS} on explorer`}
-              >
-                <ExternalLink size={9} aria-hidden />
-                Legacy v4 · {short(GRANTFLOW_V4_ADDRESS)}
-              </a>
-            </>
-          ) : (
-            <>
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5 opacity-50" style={{ color: 'var(--sidebar-fg)' }}>
-                Contract V4
-              </p>
-              <a
-                href={`${EXPLORER}/address/${GRANTFLOW_V4_ADDRESS}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80 mb-1"
-                style={{ color: 'var(--sidebar-accent)' }}
-                aria-label={`View V4 contract ${GRANTFLOW_V4_ADDRESS} on explorer`}
-              >
-                <ExternalLink size={10} aria-hidden />
-                {short(GRANTFLOW_V4_ADDRESS)}
-              </a>
-            </>
-          )}
+          {/* V5 — always visible */}
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5 opacity-50" style={{ color: 'var(--sidebar-fg)' }}>
+            {config.v5Address ? 'Contract V5' : 'Contract V4'}
+          </p>
           <a
-            href={`${EXPLORER}/address/${GRANTFLOW_ADDRESS}`}
+            href={`${EXPLORER}/address/${config.v5Address || GRANTFLOW_V4_ADDRESS}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 font-mono text-[10px] transition-colors hover:opacity-70 opacity-50"
-            style={{ color: 'var(--sidebar-fg)' }}
-            aria-label={`View legacy V3 contract ${GRANTFLOW_ADDRESS} on explorer`}
+            className="flex items-center gap-1.5 font-mono text-[11px] transition-colors hover:opacity-80 mb-2"
+            style={{ color: 'var(--sidebar-accent)' }}
+            aria-label={`View active contract on explorer`}
           >
-            <ExternalLink size={9} aria-hidden />
-            Legacy v3 · {short(GRANTFLOW_ADDRESS)}
+            <ExternalLink size={10} aria-hidden />
+            {short(config.v5Address || GRANTFLOW_V4_ADDRESS)}
           </a>
+
+          {/* Legacy toggle — only when V5 exists (so V4+V3 are truly legacy) */}
+          {config.v5Address && (
+            <>
+              <button
+                onClick={() => setLegacyOpen(v => !v)}
+                className="flex items-center gap-1 text-[10px] opacity-50 hover:opacity-75 transition-opacity mb-1"
+                style={{ color: 'var(--sidebar-fg)' }}
+                aria-expanded={legacyOpen}
+              >
+                <ChevronRight
+                  size={10}
+                  aria-hidden
+                  style={{ transform: legacyOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}
+                />
+                {t('nav.legacyContracts')}
+              </button>
+
+              {legacyOpen && (
+                <div className="space-y-1 pl-3">
+                  <a
+                    href={`${EXPLORER}/address/${GRANTFLOW_V4_ADDRESS}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 font-mono text-[10px] transition-colors hover:opacity-70 opacity-50"
+                    style={{ color: 'var(--sidebar-fg)' }}
+                    aria-label={`View legacy V4 contract on explorer`}
+                  >
+                    <ExternalLink size={9} aria-hidden />
+                    V4 · {short(GRANTFLOW_V4_ADDRESS)}
+                  </a>
+                  <a
+                    href={`${EXPLORER}/address/${GRANTFLOW_ADDRESS}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 font-mono text-[10px] transition-colors hover:opacity-70 opacity-50"
+                    style={{ color: 'var(--sidebar-fg)' }}
+                    aria-label={`View legacy V3 contract on explorer`}
+                  >
+                    <ExternalLink size={9} aria-hidden />
+                    V3 · {short(GRANTFLOW_ADDRESS)}
+                  </a>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </aside>
     </>

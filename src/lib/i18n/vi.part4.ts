@@ -54,10 +54,11 @@ export const VI_4 = {
   'footer.openSource': 'Mã nguồn mở trên GitHub',
 
   // ── Slim footer ───────────────────────────────────────────────────────────
-  'slimFooter.readLive': 'Đọc trực tiếp từ Arc mainnet',
-  'slimFooter.contract': 'Hợp đồng',
-  'slimFooter.github':   'GitHub',
-  'slimFooter.source':   'Mã nguồn',
+  'slimFooter.readLive':   'Đọc trực tiếp từ Arc mainnet',
+  'slimFooter.contract':   'Hợp đồng',
+  'slimFooter.github':     'GitHub',
+  'slimFooter.source':     'Mã nguồn',
+  'slimFooter.unaudited':  'Hợp đồng chưa được kiểm tra. Dùng số tiền nhỏ.',
 
   // ── AppShell topbar ───────────────────────────────────────────────────────
   'topbar.collapse':  'Thu gọn sidebar',
@@ -303,6 +304,7 @@ export const VI_4 = {
   'results.votes':          'Phiếu',
   'results.prize':          'Giải thưởng',
   'results.payoutTx':       'Tx thanh toán',
+  'results.finalizeTx':     'Xem tx thanh toán',
   'results.refundTx':       'Tx hoàn tiền nhà tài trợ',
   'results.totalPaid':      'Tổng đã thanh toán',
   'results.sponsorRefund':  'Hoàn tiền nhà tài trợ',

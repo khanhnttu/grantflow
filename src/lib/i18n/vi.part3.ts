@@ -156,8 +156,9 @@ export const VI_3 = {
   'create.review.approve':   'Approve',
   'create.review.creating':  'Đang tạo…',
   'create.review.createBtn': 'Tạo chương trình onchain',
-  'create.review.approved':  'Đã approve. Xác nhận tạo chương trình.',
-  'create.review.created':   'Chương trình đã được tạo onchain!',
+  'create.review.approved':     'Đã approve. Xác nhận tạo chương trình.',
+  'create.review.feeBreakdown': 'Giải thưởng {pool} USDC + phí {pct}% {fee} USDC = {total} USDC',
+  'create.review.created':      'Chương trình đã được tạo onchain!',
   'create.nav.back':         'Quay lại',
   'create.nav.next':         'Tiếp theo',
 

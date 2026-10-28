@@ -514,12 +514,12 @@ export function ProgramDetailV5({ programId, onBack, programNetwork }: Props) {
         <ShareBox url={shareUrl} programName={prog.name} compact />
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b" style={{ borderColor: 'var(--border)' }}>
+      {/* Tabs — scrollable on very small screens */}
+      <div className="flex gap-0 border-b overflow-x-auto" style={{ borderColor: 'var(--border)', WebkitOverflowScrolling: 'touch' }}>
         {TABS.map(tabItem => (
           <button key={tabItem.id}
             onClick={() => setTab(tabItem.id)}
-            className="px-4 py-2.5 text-sm font-medium transition-colors"
+            className="flex-shrink-0 px-3 py-2.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"
             style={{
               color: tab === tabItem.id ? 'var(--accent)' : 'var(--text-muted)',
               borderBottom: tab === tabItem.id ? '2px solid var(--accent)' : '2px solid transparent',

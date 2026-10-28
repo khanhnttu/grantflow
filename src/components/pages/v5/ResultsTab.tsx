@@ -73,6 +73,7 @@ export function ResultsTab({
 
   const [winners, setWinners] = useState<WinnerEntry[]>([]);
   const [sponsorRefundTx, setSponsorRefundTx] = useState<string | null>(null);
+  const [finalizeTxHash, setFinalizeTxHash] = useState<string | null>(null);
   const [totalPaid, setTotalPaid] = useState<bigint>(0n);
   const [loading, setLoading] = useState(true);
   const [showShare, setShowShare] = useState(false);
@@ -110,6 +111,7 @@ export function ResultsTab({
       // For V5: look up PrizePaid events to get tx hashes
       let prizeTxMap: Map<number, string> = new Map();
       let refundTx: string | null = null;
+      let finalizedTxRef: string | null = null;
 
       if (contractVersion === 'v5' && config.v5Address) {
         try {
@@ -150,6 +152,23 @@ export function ResultsTab({
           }).catch(() => []);
 
           if (refundLogs[0]?.transactionHash) refundTx = refundLogs[0].transactionHash;
+
+          // Fetch Finalized event to get the finalize transaction hash
+          const finalizedAbi = parseAbiItem(
+            'event Finalized(uint256 indexed programId, uint256 winnerCount, uint256 totalPaid)'
+          );
+          const finalizedLogs = await appClient.getLogs({
+            address: config.v5Address,
+            event:   finalizedAbi,
+            // eslint-disable-next-line typescript/no-unnecessary-type-assertion
+            args:    { programId: BigInt(programId) } as never,
+            fromBlock,
+          }).catch(() => []);
+          if (finalizedLogs[0]?.transactionHash) {
+            refundTx = refundTx ?? null; // keep existing
+            // Store finalize tx separately via closure variable
+            finalizedTxRef = finalizedLogs[0].transactionHash;
+          }
         } catch { /* event lookup optional — tx links are a nice-to-have */ }
       }
 
@@ -210,6 +229,7 @@ export function ResultsTab({
       setWinners(winnerList);
       setTotalPaid(paid);
       setSponsorRefundTx(refundTx);
+      setFinalizeTxHash(finalizedTxRef);
     } finally {
       setLoading(false);
     }
@@ -315,6 +335,16 @@ export function ResultsTab({
             {fmt(totalPaid)} USDC
           </span>
         </div>
+        {finalizeTxHash && (
+          <div className="flex justify-between items-center text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span>{t('results.finalizeTx')}</span>
+            <a href={explorerTx(finalizeTxHash)} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1 hover:underline"
+              style={{ color: 'var(--accent)' }}>
+              {finalizeTxHash.slice(0, 10)}… <ExternalLink size={10} />
+            </a>
+          </div>
+        )}
         {sponsorRefundTx && (
           <div className="flex justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
             <span>{t('results.refundTx')}</span>

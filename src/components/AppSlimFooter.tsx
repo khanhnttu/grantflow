@@ -46,6 +46,8 @@ export function AppSlimFooter() {
       >
         {t('slimFooter.source')}
       </a>
+      <span aria-hidden>·</span>
+      <span className="text-amber-500/80">{t('slimFooter.unaudited')}</span>
     </footer>
   );
 }

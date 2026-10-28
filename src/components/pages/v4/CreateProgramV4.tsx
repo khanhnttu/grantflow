@@ -373,7 +373,7 @@ export function CreateProgramV4({ onDone }: Props) {
                 value={desc} onChange={e => setDesc(e.target.value)}
                 placeholder={t('create.basics.descPh')} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Select label={t('create.basics.type')} value={String(pType)} onChange={v => setPType(Number(v))}>
                 {Object.entries(PROGRAM_TYPE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
@@ -385,7 +385,7 @@ export function CreateProgramV4({ onDone }: Props) {
                 ))}
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label={t('create.basics.subDl')} type="datetime-local" value={subDeadline} onChange={setSubDeadline} />
               <Field label={t('create.basics.judDl')} type="datetime-local" value={judgeDeadline} onChange={setJudgeDeadline} />
             </div>
@@ -526,6 +526,18 @@ export function CreateProgramV4({ onDone }: Props) {
                   {t('create.v5payoutNote')}
                 </p>
               )}
+            </div>
+
+            {/* Fee breakdown callout — shown prominently before signing */}
+            <div className="rounded-lg px-3 py-2.5 text-xs flex flex-col gap-0.5"
+              style={{ background: 'var(--accent)' + '18', border: '1px solid var(--accent)' + '44' }}>
+              <p className="font-semibold" style={{ color: 'var(--accent)' }}>
+                {t('create.review.feeBreakdown')
+                  .replace('{pool}',  usdcToDisplay(pool))
+                  .replace('{pct}',   feeBps > 0n ? String(Number(feeBps) / 100) : '0')
+                  .replace('{fee}',   usdcToDisplay(fee))
+                  .replace('{total}', usdcToDisplay(total))}
+              </p>
             </div>
 
             {!hasBalance && (

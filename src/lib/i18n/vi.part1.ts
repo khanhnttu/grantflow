@@ -16,6 +16,7 @@ export const VI_1 = {
   'nav.contact':          'Liên hệ',
   'nav.deploy':           'Triển khai hợp đồng',
   'nav.guide':            'Hướng dẫn',
+  'nav.legacyContracts':  'Hợp đồng cũ',
   'nav.moreMenu':         'Thêm',
 
   // ── Role switcher ─────────────────────────────────────────────────────────
